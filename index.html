@@ -1,42 +1,33 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Reliable Store</title>
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reliable Store — Coming Soon</title>
+  <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#06b6d4;--text:#e6eef6}
+    *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071026 0%,#081327 60%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    .wrap{max-width:720px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.04));padding:36px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6);text-align:center}
+    h1{margin:0 0 8px;font-size:28px}
+    p{margin:0 0 18px;color:#c9d8e6}
+    .logo{display:inline-block;margin-bottom:18px}
+    .cta{display:inline-flex;gap:10px}
+    a.button{display:inline-block;padding:10px 16px;border-radius:10px;background:var(--accent);color:#022; text-decoration:none;font-weight:600}
+    .small{font-size:13px;color:#9fb0c8;margin-top:14px}
+    .contact{margin-top:16px;color:#cfeaf6}
+  </style>
 </head>
 <body>
-  <header class="site-header">
-    <h1>Reliable Store</h1>
-    <div class="cart-link">Cart: <span id="cart-count">0</span></div>
-  </header>
-
-  <main class="container">
-    <section id="products" class="products-grid" aria-live="polite">
-      <!-- products will be injected here -->
-    </section>
-
-    <aside class="cart-panel" id="cart-panel">
-      <h2>Your Cart</h2>
-      <ul id="cart-items"></ul>
-      <div class="cart-total">Total: ₹<span id="cart-total">0.00</span></div>
-      <div class="checkout-actions">
-        <a id="checkout-razorpay" class="btn primary" href="#" target="_blank" rel="noopener">Pay with Razorpay (Payment Link)</a>
-        <a id="checkout-paypal" class="btn" href="#" target="_blank" rel="noopener">Pay with PayPal</a>
-      </div>
-    </aside>
-  </main>
-
-  <template id="product-template">
-    <article class="product">
-      <img class="product-image" src="" alt="">
-      <h3 class="product-title"></h3>
-      <p class="product-price">₹<span class="price">0.00</span></p>
-      <button class="btn add-to-cart">Add to cart</button>
-    </article>
-  </template>
-
-  <script src="assets/js/cart.js"></script>
+  <div class="wrap">
+    <div class="logo"><img alt="Reliable Store" src="https://via.placeholder.com/220x48?text=ReliableStore" style="height:48px;display:block;margin:0 auto"/></div>
+    <h1>We’re opening soon — Reliable Store</h1>
+    <p>Thanks for stopping by. We’re adding products and polishing checkout. Come back shortly!</p>
+    <div class="cta">
+      <a class="button" href="https://www.reliablestore.in" onclick="return false;">Notify me</a>
+      <a class="button" style="background:#fff;color:#022" href="mailto:you@yourmail.com">Contact us</a>
+    </div>
+    <div class="small">Follow us on WhatsApp or check back later. If you need urgent help, email us.</div>
+    <div class="contact">📞 +91-XXXXXXXXXX • ✉️ support@reliablestore.in</div>
+  </div>
 </body>
 </html>
