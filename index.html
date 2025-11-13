@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reliable Store</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Reliable Store</h1>
+    <div class="cart-link">Cart: <span id="cart-count">0</span></div>
+  </header>
+
+  <main class="container">
+    <section id="products" class="products-grid" aria-live="polite">
+      <!-- products will be injected here -->
+    </section>
+
+    <aside class="cart-panel" id="cart-panel">
+      <h2>Your Cart</h2>
+      <ul id="cart-items"></ul>
+      <div class="cart-total">Total: ₹<span id="cart-total">0.00</span></div>
+      <div class="checkout-actions">
+        <a id="checkout-razorpay" class="btn primary" href="#" target="_blank" rel="noopener">Pay with Razorpay (Payment Link)</a>
+        <a id="checkout-paypal" class="btn" href="#" target="_blank" rel="noopener">Pay with PayPal</a>
+      </div>
+    </aside>
+  </main>
+
+  <template id="product-template">
+    <article class="product">
+      <img class="product-image" src="" alt="">
+      <h3 class="product-title"></h3>
+      <p class="product-price">₹<span class="price">0.00</span></p>
+      <button class="btn add-to-cart">Add to cart</button>
+    </article>
+  </template>
+
+  <script src="assets/js/cart.js"></script>
+</body>
+</html>
