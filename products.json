@@ -2,13 +2,13 @@
   {
     "id": "p1",
     "name": "USB Fast Charger 30W",
-    "price": 699.0,
+    "price": Rs.699/-,
     "image": "https://images.unsplash.com/photo-1585386959984-a415522f2f11?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=abc"
   },
   {
     "id": "p2",
     "name": "Type-C Cable 1m",
-    "price": 249.0,
+    "price": Rs.249/-,
     "image": "https://images.unsplash.com/photo-1555617117-08b6b6c7f9d9?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&s=def"
   }
 ]
