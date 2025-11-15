@@ -1,33 +1,76 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Reliable Store — Coming Soon</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  $1
+  <!-- Favicons & app icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
+  <link rel="shortcut icon" href="/assets/icons/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/android-chrome-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/android-chrome-512.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
   <style>
-    :root{--bg:#0f172a;--card:#0b1220;--accent:#06b6d4;--text:#e6eef6}
-    *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071026 0%,#081327 60%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .wrap{max-width:720px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.04));padding:36px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6);text-align:center}
-    h1{margin:0 0 8px;font-size:28px}
-    p{margin:0 0 18px;color:#c9d8e6}
-    .logo{display:inline-block;margin-bottom:18px}
-    .cta{display:inline-flex;gap:10px}
-    a.button{display:inline-block;padding:10px 16px;border-radius:10px;background:var(--accent);color:#022; text-decoration:none;font-weight:600}
-    .small{font-size:13px;color:#9fb0c8;margin-top:14px}
-    .contact{margin-top:16px;color:#cfeaf6}
+    body { background:#f7f7f7; }
+    header { background:#111827; }
+    header a.navbar-brand { color:white; font-weight:600; }
+    .product-card img { height:160px; object-fit:cover; }
+    .coming-soon-banner { background:#fde047; padding:10px; text-align:center; font-weight:600; }
+    footer { background:#111827; color:#d1d5db; padding:20px 0; margin-top:40px; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="logo"><img alt="Reliable Store" src="https://via.placeholder.com/220x48?text=ReliableStore" style="height:48px;display:block;margin:0 auto"/></div>
-    <h1>We’re opening soon — Reliable Store</h1>
-    <p>Thanks for stopping by. We’re adding products and polishing checkout. Come back shortly!</p>
-    <div class="cta">
-      <a class="button" href="https://www.reliablestore.in" onclick="return false;">Notify me</a>
-      <a class="button" style="background:#fff;color:#022" href="mailto:you@yourmail.com">Contact us</a>
-    </div>
-    <div class="small">Follow us on WhatsApp or check back later. If you need urgent help, email us.</div>
-    <div class="contact">📞 +91-8856085258 • ✉️ contact@reliablestore.in</div>
+
+<div class="coming-soon-banner">🚧 Our store is coming soon. We are getting everything ready! 🚧</div>
+
+<header class="py-3 mb-4">
+  <div class="container d-flex justify-content-between align-items-center">
+    <a class="navbar-brand" href="#"><img src="/assets/icons/Header Logo.png" alt="ReliableStore" style="height:44px;display:inline-block;vertical-align:middle"/></a>
+    <a href="#cart" class="btn btn-warning">Cart <span id="cart-count" class="badge bg-danger">0</span></a>
   </div>
+</header>
+
+<main class="container">
+  <h2 class="mb-4">Featured Products</h2>
+  <div id="product-list" class="row g-4">
+    <!-- Products will be inserted here -->
+  </div>
+</main>
+
+<footer class="text-center">
+  <p class="mb-0">© ReliableStore — All Rights Reserved</p>
+</footer>
+
+<script>
+  const products = [
+    { id: 1, name: 'Fast Charger 30W', price: 699, img: 'https://via.placeholder.com/300x200?text=Charger' },
+    { id: 2, name: 'Type‑C Cable 1m', price: 249, img: 'https://via.placeholder.com/300x200?text=Cable' },
+    { id: 3, name: 'Power Bank 20000mAh', price: 1299, img: 'https://via.placeholder.com/300x200?text=PowerBank' }
+  ];
+
+  const list = document.getElementById('product-list');
+  products.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'col-6 col-md-4';
+    card.innerHTML = `
+      <div class="card product-card">
+        <img src="${p.img}" class="card-img-top" alt="${p.name}" />
+        <div class="card-body">
+          <h5 class="card-title">${p.name}</h5>
+          <p class="card-text fw-bold">₹${p.price}</p>
+          <button class="btn btn-primary w-100" onclick="addToCart()">Add to Cart</button>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  function addToCart() {
+    const el = document.getElementById('cart-count');
+    el.textContent = Number(el.textContent) + 1;
+  }
+</script>
+
 </body>
 </html>
