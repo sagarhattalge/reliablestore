@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   $1
   <!-- Favicons & app icons -->
-  <link rel="icon" href="/favicon.ico?v=3" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
   <link rel="shortcut icon" href="/assets/icons/favicon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
@@ -16,7 +15,7 @@
     body { background:#f7f7f7; }
     header { background:#111827; }
     header a.navbar-brand { color:white; font-weight:600; }
-    .product-card img { height:160px; object-fit:cover; }
+    .product-card img { height:160px; width:100%; object-fit:contain; background:#ffffff; }
     .coming-soon-banner { background:#fde047; padding:10px; text-align:center; font-weight:600; }
     footer { background:#111827; color:#d1d5db; padding:20px 0; margin-top:40px; }
   </style>
@@ -27,7 +26,7 @@
 
 <header class="py-3 mb-4">
   <div class="container d-flex justify-content-between align-items-center">
-    <a class="navbar-brand" href="#"><img src="/assets/icons/Header Logo.png" alt="ReliableStore" style="height:44px;display:inline-block;vertical-align:middle"/></a>
+    <a class="navbar-brand" href="#"><img src="/assets/icons/Header Logo.png" alt="ReliableStore" style="height:44px;width:auto;object-fit:contain;display:inline-block;vertical-align:middle;background:#fff"/></a>
     <a href="#cart" class="btn btn-warning">Cart <span id="cart-count" class="badge bg-danger">0</span></a>
   </div>
 </header>
