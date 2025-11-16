@@ -49,6 +49,32 @@ title: Contact — Reliable Store
 
         <button type="submit" style="background:#ff8c00;color:#fff;padding:12px 20px;border:0;border-radius:6px;cursor:pointer;font-size:16px;">
           Send Message
+          <!-- hidden field to hold visitor's public IP (set by JS) -->
+<input type="hidden" name="clientIp" id="clientIp" value="">
+
+<script>
+  // Fetch public IP and store it in hidden field (uses ipify, free)
+  // Runs on page load; best-effort (if it fails, clientIp remains blank)
+  (function() {
+    try {
+      fetch('https://api.ipify.org?format=json')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.ip) {
+            const el = document.getElementById('clientIp');
+            if (el) el.value = data.ip;
+          }
+        })
+        .catch(err => {
+          // silent fail — not critical
+          console.warn('ip fetch failed', err);
+        });
+    } catch(e) {
+      console.warn('ip fetch error', e);
+    }
+  })();
+</script>
+
         </button>
 
         <div id="form-status" style="margin-top:16px;color:green;font-weight:600;display:none;">
