@@ -19,19 +19,28 @@ title: Contact — Reliable Store
       <div style="max-width:720px;margin:0 auto;">
         
         <label>
-          Name<br/>
-          <input name="name" type="text" required style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"/>
-        </label>
+  Name<br/>
+  <input name="name" type="text" required minlength="3"
+         style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
+         placeholder="Enter your full name"/>
+</label>
 
-        <label>
-          Email<br/>
-          <input name="email" type="email" required style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"/>
-        </label>
+<label>
+  Email<br/>
+  <input name="email" type="email" required
+         style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
+         placeholder="example@gmail.com"/>
+</label>
 
-        <label>
-          Phone<br/>
-          <input name="phone" type="tel" style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"/>
-        </label>
+<label>
+  Phone (10 digits)<br/>
+  <input name="phone" type="tel" required
+         pattern="^[0-9]{10}$"
+         style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
+         placeholder="10-digit mobile number"
+         title="Please enter a valid 10-digit number"/>
+</label>
+
 
         <label>
           Message<br/>
