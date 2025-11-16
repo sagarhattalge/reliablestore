@@ -1,149 +1,63 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>About Us — ReliableStore</title>
+---
+layout: default
+title: About — Reliable Store
+---
 
-  <!-- Favicons -->
-  <link rel="icon" href="/assets/icons/favicon.png" />
-  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
-  <link rel="icon" sizes="192x192" href="/assets/icons/android-chrome-192.png" />
-  <link rel="icon" sizes="512x512" href="/assets/icons/android-chrome-512.png" />
+<!-- HERO -->
+<section class="hero-full" role="banner" aria-label="About hero"
+  style="background-image:url('/assets/uploads/hero11-free-img.png'); background-size:cover; background-position:center;">
+  
+  <div class="hero-overlay" style="position:absolute;inset:0;background:rgba(255,255,255,0.55);"></div>
 
-  <style>
-    :root{
-      --accent:#0ea5e9;
-      --muted:#6b7280;
-      --bg:#fbfdff;
-      --card:#ffffff;
-      --content-max:1100px;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#111}
-    a{color:var(--accent);text-decoration:none}
-    /* Header */
-    header{display:flex;align-items:center;gap:16px;padding:18px 24px;background:transparent}
-    header img.logo{height:44px;object-fit:contain}
-
-    /* ---------- FULL-WIDTH HERO (no side gutters) ---------- */
-    .hero-full {
-      width:100%;
-      min-height:320px;
-      background-image: url('/assets/uploads/hero11-free-img.png');
-      background-size: cover;
-      background-position: center center;
-      background-repeat: no-repeat;
-      position: relative;
-      display:flex;
-      align-items:center;
-      padding:56px 24px; /* padding only inside content area */
-    }
-    /* subtle overlay so pale images remain visible */
-    .hero-full::before{
-      content:"";
-      position:absolute; inset:0; background: rgba(255,255,255,0.55); z-index:1;
-    }
-    /* inner constrains content width while hero stays full-bleed */
-    .inner {
-      position:relative; z-index:2; width:100%; margin:0 auto;
-      max-width:var(--content-max); display:flex; gap:32px; align-items:center; flex-wrap:wrap;
-    }
-    .hero-left { flex:1; min-width:300px; padding-right:24px }
-    .hero-left h1{font-size:34px;margin:0;color:#0f172a}
-    .hero-left p{margin:10px 0 0;color:var(--muted);line-height:1.6}
-
-    /* optional decorative image (on right) - will scale nicely */
-    .hero-deco { width:380px; max-width:38%; min-width:240px; height:220px; border-radius:10px; overflow:hidden; background:#f3f5f7; box-shadow:0 6px 20px rgba(2,6,23,0.06); background-position:center; background-size:cover; }
-
-    /* ---------- DECORATIVE BAND (full width) ---------- */
-    .band {
-      width:100%; display:block; padding:28px 0; background:transparent;
-    }
-    .band img{width:100%; display:block; border-radius:10px}
-
-    /* ---------- FEATURES: full-bleed band with centered grid ---------- */
-    .features-band { width:100%; background:transparent; padding:28px 24px 56px; }
-    .features-wrap{ max-width:var(--content-max); margin:0 auto; display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
-    .feature{background:var(--card);padding:20px;border-radius:12px;text-align:center;min-height:150px;box-shadow:0 10px 30px rgba(2,6,23,0.04); display:flex;flex-direction:column;align-items:center; justify-content:flex-start}
-    .feature img{width:64px;height:64px;object-fit:contain;margin-bottom:12px}
-    .feature h3{margin:6px 0;font-size:16px}
-    .feature p{color:var(--muted);font-size:14px;margin:0}
-
-    footer{padding:30px 24px;color:var(--muted);text-align:center}
-
-    /* responsive */
-    @media (max-width:1000px){
-      .features-wrap{ grid-template-columns:repeat(2,1fr) }
-      .hero-deco{ display:block; width:46%; }
-    }
-    @media (max-width:600px){
-      .hero-full{ padding:20px 14px; min-height:220px }
-      .hero-left h1{font-size:22px}
-      .features-wrap{ grid-template-columns:1fr; gap:12px }
-      .hero-deco{ width:100%; height:160px }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- header -->
-  <header>
-    <a href="/"><img src="/assets/icons/Header%20Logo.png" alt="ReliableStore" class="logo"></a>
-  </header>
-
-  <!-- FULL-WIDTH HERO -->
-  <section class="hero-full" role="region" aria-label="About hero">
-    <div class="inner">
-      <div class="hero-left">
-        <h1>About Reliable Store</h1>
-        <p>Reliable store is dealing with selling of all original konkan products and it is the only place where you will get all genuine and quality products.</p>
-      </div>
-
-      <!-- decorative graphic on right (optional) -->
-      <div class="hero-deco" style="background-image: url('/assets/uploads/graphic05-free-img.png');"></div>
-    </div>
-  </section>
-
-  <!-- decorative band full width -->
-  <div class="band">
-    <div style="max-width:var(--content-max);margin:0 auto;padding:0 24px">
-      <img src="/assets/uploads/graphic05-free-img.png" alt="" style="border-radius:10px">
-    </div>
+  <div class="hero-inner" style="position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:56px 20px;text-align:center;">
+    <h1 style="font-size:42px;margin:0;color:#233;">About Reliable Store</h1>
+    <p style="color:#6b7280;max-width:900px;margin:8px auto 0;line-height:1.7;">
+      Reliable store is dealing with selling of all original konkan products and it is the only place where you will get all genuine and quality products.
+    </p>
   </div>
+</section>
 
-  <!-- FEATURES full-bleed band with centered grid -->
-  <section class="features-band" aria-label="features">
-    <div class="features-wrap">
-      <div class="feature">
-        <img src="/assets/uploads/globe-free-img.png" alt="Shipping">
-        <h3>All India Shipping</h3>
-        <p>We and our shipping partners are always trying to ship our products at almost all locations in India.</p>
-      </div>
+<!-- Decorative Wave -->
+<div class="wave-space" aria-hidden="true"
+     style="width:100%;height:48px;background:url('/assets/uploads/graphic05-free-img.png') center/cover no-repeat;">
+</div>
 
-      <div class="feature">
-        <img src="/assets/uploads/quality-free-img.png" alt="Quality">
-        <h3>Best Quality</h3>
-        <p>All our products are fresh, original, genuine and with very good quality.</p>
-      </div>
-
-      <div class="feature">
-        <img src="/assets/uploads/tag-free-img.png" alt="Offers">
-        <h3>Best Offers</h3>
-        <p>Keep visiting our online store for the Best Offers we are offering time to time.</p>
-      </div>
-
-      <div class="feature">
-        <img src="/assets/uploads/lock-free-img.png" alt="Payments">
-        <h3>Secure Payments</h3>
-        <p>Your payment is safe and secured.</p>
-      </div>
+<!-- FEATURES -->
+<section class="features-band" aria-label="features" style="width:100%;background:#fff;padding:36px 20px;">
+  <div class="features-wrap"
+       style="max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;">
+    
+    <div class="feature" style="background:#fff;border-radius:12px;padding:20px;text-align:center;
+      box-shadow:0 6px 20px rgba(2,6,23,0.04);">
+      <img src="/assets/uploads/globe-free-img.png" alt="All India Shipping"
+           style="width:56px;height:56px;">
+      <h3 style="margin:6px 0;">All India Shipping</h3>
+      <p style="color:#6b7280;font-size:14px;">We and our shipping partners are always trying to ship our products at almost all locations in India.</p>
     </div>
-  </section>
 
-  <footer>
-    © ReliableStore — All Rights Reserved
-  </footer>
+    <div class="feature" style="background:#fff;border-radius:12px;padding:20px;text-align:center;
+      box-shadow:0 6px 20px rgba(2,6,23,0.04);">
+      <img src="/assets/uploads/quality-free-img.png" alt="Best Quality"
+           style="width:56px;height:56px;">
+      <h3 style="margin:6px 0;">Best Quality</h3>
+      <p style="color:#6b7280;font-size:14px;">All our products are fresh, original, genuine and with very good quality.</p>
+    </div>
 
-</body>
-</html>
+    <div class="feature" style="background:#fff;border-radius:12px;padding:20px;text-align:center;
+      box-shadow:0 6px 20px rgba(2,6,23,0.04);">
+      <img src="/assets/uploads/tag-free-img.png" alt="Best Offers"
+           style="width:56px;height:56px;">
+      <h3 style="margin:6px 0;">Best Offers</h3>
+      <p style="color:#6b7280;font-size:14px;">Keep visiting our online store for the Best Offers we are offering time to time.</p>
+    </div>
+
+    <div class="feature" style="background:#fff;border-radius:12px;padding:20px;text-align:center;
+      box-shadow:0 6px 20px rgba(2,6,23,0.04);">
+      <img src="/assets/uploads/lock-free-img.png" alt="Secure Payments"
+           style="width:56px;height:56px;">
+      <h3 style="margin:6px 0;">Secure Payments</h3>
+      <p style="color:#6b7280;font-size:14px;">Your payment is safe and secured.</p>
+    </div>
+
+  </div>
+</section>
