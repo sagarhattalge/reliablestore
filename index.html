@@ -1,76 +1,107 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  $1
-  <!-- Favicons & app icons -->
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
-  <link rel="shortcut icon" href="/assets/icons/favicon.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/android-chrome-192.png" />
-  <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/android-chrome-512.png" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
-  <style>
-    body { background:#f7f7f7; }
-    header { background:#111827; }
-    header a.navbar-brand { color:white; font-weight:600; }
-    .product-card img { height:160px; width:100%; object-fit:contain; background:#ffffff; }
-    .coming-soon-banner { background:#fde047; padding:10px; text-align:center; font-weight:600; }
-    footer { background:#111827; color:#d1d5db; padding:20px 0; margin-top:40px; }
-  </style>
-</head>
-<body>
+---
+layout: default
+title: Reliable Store — Home
+---
 
-<div class="coming-soon-banner">🚧 Our store is coming soon. We are getting everything ready! 🚧</div>
+<!-- HERO SECTION -->
+<section class="hero-full" role="banner" aria-label="Homepage hero"
+  style="background-image:url('/assets/uploads/hero11-free-img.png'); background-size:cover; background-position:center;">
+  
+  <div class="hero-overlay" style="position:absolute;inset:0;background:rgba(255,255,255,0.55);"></div>
 
-<header class="py-3 mb-4">
-  <div class="container d-flex justify-content-between align-items-center">
-    <a class="navbar-brand" href="#"><img src="/assets/icons/Header Logo.png" alt="ReliableStore" style="height:44px;width:auto;object-fit:contain;display:inline-block;vertical-align:middle;background:#fff"/></a>
-    <a href="#cart" class="btn btn-warning">Cart <span id="cart-count" class="badge bg-danger">0</span></a>
+  <div class="hero-inner" style="position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:56px 20px;text-align:center;">
+    <h1 style="font-size:46px;margin:0;color:#222;">
+      Welcome to Reliable Store
+    </h1>
+    <p style="color:#6b7280;margin:12px 0 0;max-width:880px;margin-left:auto;margin-right:auto;line-height:1.6;">
+      Authentic Konkan products delivered straight to your doorstep.  
+      Quality you trust, service you deserve.
+    </p>
   </div>
-</header>
+</section>
 
-<main class="container">
-  <h2 class="mb-4">Featured Products</h2>
-  <div id="product-list" class="row g-4">
-    <!-- Products will be inserted here -->
+<!-- SEARCH BAR -->
+<div style="width:100%;background:#fff;padding:24px 0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
+  <div style="max-width:1180px;margin:0 auto;padding:0 20px;display:flex;gap:12px;">
+    <input type="search" placeholder="Search for products..." 
+           style="flex:1;padding:12px 14px;font-size:16px;border:1px solid #ccc;border-radius:6px;">
+    <button style="background:#ff8c00;color:#fff;border:0;padding:12px 20px;border-radius:6px;cursor:pointer;font-size:16px;">
+      Search
+    </button>
   </div>
-</main>
+</div>
 
-<footer class="text-center">
-  <p class="mb-0">© ReliableStore — All Rights Reserved</p>
-</footer>
+<!-- CATEGORY SHORTCUTS (like original site) -->
+<section style="max-width:1180px;margin:30px auto;padding:0 20px;">
+  <h2 style="margin-bottom:14px;">Shop by Category</h2>
+  <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;">
+    <a href="/all-products.html" style="padding:12px 18px;background:#fff;border-radius:8px;
+         box-shadow:0 4px 10px rgba(0,0,0,0.05);white-space:nowrap;">
+      All Products
+    </a>
+    <a href="/category.html" style="padding:12px 18px;background:#fff;border-radius:8px;
+         box-shadow:0 4px 10px rgba(0,0,0,0.05);white-space:nowrap;">
+      Grocery & Gourmet Foods
+    </a>
+    <a href="/contact.html" style="padding:12px 18px;background:#fff;border-radius:8px;
+         box-shadow:0 4px 10px rgba(0,0,0,0.05);white-space:nowrap;">
+      Contact & Support
+    </a>
+  </div>
+</section>
 
+<!-- FEATURED PRODUCTS -->
+<section style="max-width:1180px;margin:30px auto;padding:0 20px;">
+  <h2 style="margin-bottom:20px;">Featured Products</h2>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;">
+
+    <!-- Product 1 -->
+    <div style="background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.05);padding:14px;">
+      <img src="https://via.placeholder.com/260x200?text=Charger" 
+           alt="Fast Charger" 
+           style="width:100%;height:160px;object-fit:contain;background:#fff;border-radius:8px;">
+      <h3 style="font-size:16px;margin:12px 0 4px;">Fast Charger 30W</h3>
+      <div style="font-weight:600;font-size:18px;color:#333;">₹699</div>
+      <button onclick="addToCart()" style="margin-top:12px;width:100%;background:#0ea5e9;color:#fff;
+              border-radius:6px;border:0;padding:10px 0;cursor:pointer;font-size:15px;">
+        Add to Cart
+      </button>
+    </div>
+
+    <!-- Product 2 -->
+    <div style="background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.05);padding:14px;">
+      <img src="https://via.placeholder.com/260x200?text=Cable" 
+           alt="Type-C Cable" 
+           style="width:100%;height:160px;object-fit:contain;background:#fff;border-radius:8px;">
+      <h3 style="font-size:16px;margin:12px 0 4px;">Type-C Cable 1m</h3>
+      <div style="font-weight:600;font-size:18px;color:#333;">₹249</div>
+      <button onclick="addToCart()" style="margin-top:12px;width:100%;background:#0ea5e9;color:#fff;
+              border-radius:6px;border:0;padding:10px 0;cursor:pointer;font-size:15px;">
+        Add to Cart
+      </button>
+    </div>
+
+    <!-- Product 3 -->
+    <div style="background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.05);padding:14px;">
+      <img src="https://via.placeholder.com/260x200?text=Power+Bank" 
+           alt="Power Bank" 
+           style="width:100%;height:160px;object-fit:contain;background:#fff;border-radius:8px;">
+      <h3 style="font-size:16px;margin:12px 0 4px;">Power Bank 20000mAh</h3>
+      <div style="font-weight:600;font-size:18px;color:#333;">₹1299</div>
+      <button onclick="addToCart()" style="margin-top:12px;width:100%;background:#0ea5e9;color:#fff;
+              border-radius:6px;border:0;padding:10px 0;cursor:pointer;font-size:15px;">
+        Add to Cart
+      </button>
+    </div>
+
+  </div>
+</section>
+
+<!-- JS -->
 <script>
-  const products = [
-    { id: 1, name: 'Fast Charger 30W', price: 699, img: 'https://via.placeholder.com/300x200?text=Charger' },
-    { id: 2, name: 'Type‑C Cable 1m', price: 249, img: 'https://via.placeholder.com/300x200?text=Cable' },
-    { id: 3, name: 'Power Bank 20000mAh', price: 1299, img: 'https://via.placeholder.com/300x200?text=PowerBank' }
-  ];
-
-  const list = document.getElementById('product-list');
-  products.forEach(p => {
-    const card = document.createElement('div');
-    card.className = 'col-6 col-md-4';
-    card.innerHTML = `
-      <div class="card product-card">
-        <img src="${p.img}" class="card-img-top" alt="${p.name}" />
-        <div class="card-body">
-          <h5 class="card-title">${p.name}</h5>
-          <p class="card-text fw-bold">₹${p.price}</p>
-          <button class="btn btn-primary w-100" onclick="addToCart()">Add to Cart</button>
-        </div>
-      </div>
-    `;
-    list.appendChild(card);
-  });
-
-  function addToCart() {
-    const el = document.getElementById('cart-count');
-    el.textContent = Number(el.textContent) + 1;
-  }
+function addToCart(){
+  const el = document.getElementById("cart-count");
+  if(el) el.textContent = Number(el.textContent) + 1;
+}
 </script>
-
-</body>
-</html>
