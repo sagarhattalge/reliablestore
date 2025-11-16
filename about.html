@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>About Us — ReliableStore</title>
 
-  <!-- Favicons (already in repo) -->
+  <!-- Favicons -->
   <link rel="icon" href="/assets/icons/favicon.png" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
   <link rel="icon" sizes="192x192" href="/assets/icons/android-chrome-192.png" />
@@ -17,116 +17,133 @@
       --muted:#6b7280;
       --bg:#fbfdff;
       --card:#ffffff;
-      --maxw:1100px;
+      --content-max:1100px;
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#111}
     a{color:var(--accent);text-decoration:none}
-    .container{max-width:var(--maxw);margin:0 auto;padding:24px}
-    header{display:flex;align-items:center;gap:16px;padding:18px 0}
+    /* Header */
+    header{display:flex;align-items:center;gap:16px;padding:18px 24px;background:transparent}
     header img.logo{height:44px;object-fit:contain}
-    /* HERO section (background image like original Elementor) */
-    .hero {
-      border-radius:12px;
-      overflow:hidden;
+
+    /* ---------- FULL-WIDTH HERO (no side gutters) ---------- */
+    .hero-full {
+      width:100%;
+      min-height:320px;
+      background-image: url('/assets/uploads/hero11-free-img.png');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      position: relative;
       display:flex;
       align-items:center;
-      justify-content:flex-start;
-      background: #ffffff;
-      margin-bottom: 18px;
-      min-height: 260px;
-      position: relative;
+      padding:56px 24px; /* padding only inside content area */
     }
-    /* soft overlay so pale backgrounds stay visible */
-    .hero::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,0.55);
-      z-index:1;
+    /* subtle overlay so pale images remain visible */
+    .hero-full::before{
+      content:"";
+      position:absolute; inset:0; background: rgba(255,255,255,0.55); z-index:1;
     }
-    .hero .inner { position:relative; z-index:2; display:flex; gap:24px; align-items:center; padding:48px; width:100%; flex-wrap:wrap; }
-    .hero .left { flex:1; min-width:260px; }
-    .hero h1{font-size:32px;margin:0;color:#0f172a}
-    .hero p{margin:10px 0 0;color:var(--muted);max-width:720px;line-height:1.6}
-    /* decorative background image is applied to the hero container via inline style in HTML */
-    /* Features */
-    .features{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:28px}
-    .feature{background:var(--card);padding:18px;border-radius:10px;text-align:center;min-height:160px;box-shadow:0 6px 20px rgba(2,6,23,0.04);display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
-    .feature img{width:64px;height:64px;object-fit:contain;margin-bottom:10px}
+    /* inner constrains content width while hero stays full-bleed */
+    .inner {
+      position:relative; z-index:2; width:100%; margin:0 auto;
+      max-width:var(--content-max); display:flex; gap:32px; align-items:center; flex-wrap:wrap;
+    }
+    .hero-left { flex:1; min-width:300px; padding-right:24px }
+    .hero-left h1{font-size:34px;margin:0;color:#0f172a}
+    .hero-left p{margin:10px 0 0;color:var(--muted);line-height:1.6}
+
+    /* optional decorative image (on right) - will scale nicely */
+    .hero-deco { width:380px; max-width:38%; min-width:240px; height:220px; border-radius:10px; overflow:hidden; background:#f3f5f7; box-shadow:0 6px 20px rgba(2,6,23,0.06); background-position:center; background-size:cover; }
+
+    /* ---------- DECORATIVE BAND (full width) ---------- */
+    .band {
+      width:100%; display:block; padding:28px 0; background:transparent;
+    }
+    .band img{width:100%; display:block; border-radius:10px}
+
+    /* ---------- FEATURES: full-bleed band with centered grid ---------- */
+    .features-band { width:100%; background:transparent; padding:28px 24px 56px; }
+    .features-wrap{ max-width:var(--content-max); margin:0 auto; display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+    .feature{background:var(--card);padding:20px;border-radius:12px;text-align:center;min-height:150px;box-shadow:0 10px 30px rgba(2,6,23,0.04); display:flex;flex-direction:column;align-items:center; justify-content:flex-start}
+    .feature img{width:64px;height:64px;object-fit:contain;margin-bottom:12px}
     .feature h3{margin:6px 0;font-size:16px}
     .feature p{color:var(--muted);font-size:14px;margin:0}
-    footer{margin-top:36px;padding:28px 0;color:var(--muted);text-align:center}
+
+    footer{padding:30px 24px;color:var(--muted);text-align:center}
+
     /* responsive */
-    @media (max-width:900px){
-      .features{grid-template-columns:repeat(2,1fr)}
-      .hero .inner{padding:24px}
+    @media (max-width:1000px){
+      .features-wrap{ grid-template-columns:repeat(2,1fr) }
+      .hero-deco{ display:block; width:46%; }
     }
-    @media (max-width:520px){
-      .features{grid-template-columns:1fr}
-      .hero h1{font-size:22px}
-      .hero{min-height:200px}
+    @media (max-width:600px){
+      .hero-full{ padding:20px 14px; min-height:220px }
+      .hero-left h1{font-size:22px}
+      .features-wrap{ grid-template-columns:1fr; gap:12px }
+      .hero-deco{ width:100%; height:160px }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Header with logo -->
-    <header>
-      <a href="/"><img src="/assets/icons/Header%20Logo.png" alt="ReliableStore" class="logo" /></a>
-    </header>
 
-    <!-- Hero (background image applied to section) -->
-    <section class="hero" aria-label="About hero"
-      style="background-image: url('/assets/uploads/hero11-free-img.png'); background-size: cover; background-position: center center; background-repeat: no-repeat;">
-      <div class="inner">
-        <div class="left">
-          <h1>About Reliable Store</h1>
-          <p>Reliable store is dealing with selling of all original konkan products and it is the only place where you will get all genuine and quality products.</p>
-        </div>
-        <!-- if you want a decorative graphic inside the section (optional),
-             you may uncomment the image below and upload the file to /assets/uploads/ -->
-        <!-- <img src="/assets/uploads/graphic05-free-img.png" alt="decorative graphic" style="width:320px;height:220px;object-fit:cover;border-radius:8px;"/> -->
+  <!-- header -->
+  <header>
+    <a href="/"><img src="/assets/icons/Header%20Logo.png" alt="ReliableStore" class="logo"></a>
+  </header>
+
+  <!-- FULL-WIDTH HERO -->
+  <section class="hero-full" role="region" aria-label="About hero">
+    <div class="inner">
+      <div class="hero-left">
+        <h1>About Reliable Store</h1>
+        <p>Reliable store is dealing with selling of all original konkan products and it is the only place where you will get all genuine and quality products.</p>
       </div>
-    </section>
 
-    <!-- Optional decorative full-width band -->
-    <section style="margin-bottom:18px">
-      <img src="/assets/uploads/graphic05-free-img.png" alt="" style="width:100%;border-radius:10px;display:block" />
-    </section>
+      <!-- decorative graphic on right (optional) -->
+      <div class="hero-deco" style="background-image: url('/assets/uploads/graphic05-free-img.png');"></div>
+    </div>
+  </section>
 
-    <!-- Features -->
-    <section>
-      <div class="features" role="list">
-        <div class="feature" role="listitem">
-          <img src="/assets/uploads/globe-free-img.png" alt="Shipping" />
-          <h3>All India Shipping</h3>
-          <p>We and our shipping partners are always trying to ship our products at almost all locations in India.</p>
-        </div>
-
-        <div class="feature" role="listitem">
-          <img src="/assets/uploads/quality-free-img.png" alt="Quality" />
-          <h3>Best Quality</h3>
-          <p>All our products are fresh, original, genuine and with very good quality.</p>
-        </div>
-
-        <div class="feature" role="listitem">
-          <img src="/assets/uploads/tag-free-img.png" alt="Offers" />
-          <h3>Best Offers</h3>
-          <p>Keep visiting our online store for the Best Offers we are offering time to time.</p>
-        </div>
-
-        <div class="feature" role="listitem">
-          <img src="/assets/uploads/lock-free-img.png" alt="Payments" />
-          <h3>Secure Payments</h3>
-          <p>Your payment is safe and secured.</p>
-        </div>
-      </div>
-    </section>
-
-    <footer>
-      © ReliableStore — All Rights Reserved
-    </footer>
+  <!-- decorative band full width -->
+  <div class="band">
+    <div style="max-width:var(--content-max);margin:0 auto;padding:0 24px">
+      <img src="/assets/uploads/graphic05-free-img.png" alt="" style="border-radius:10px">
+    </div>
   </div>
+
+  <!-- FEATURES full-bleed band with centered grid -->
+  <section class="features-band" aria-label="features">
+    <div class="features-wrap">
+      <div class="feature">
+        <img src="/assets/uploads/globe-free-img.png" alt="Shipping">
+        <h3>All India Shipping</h3>
+        <p>We and our shipping partners are always trying to ship our products at almost all locations in India.</p>
+      </div>
+
+      <div class="feature">
+        <img src="/assets/uploads/quality-free-img.png" alt="Quality">
+        <h3>Best Quality</h3>
+        <p>All our products are fresh, original, genuine and with very good quality.</p>
+      </div>
+
+      <div class="feature">
+        <img src="/assets/uploads/tag-free-img.png" alt="Offers">
+        <h3>Best Offers</h3>
+        <p>Keep visiting our online store for the Best Offers we are offering time to time.</p>
+      </div>
+
+      <div class="feature">
+        <img src="/assets/uploads/lock-free-img.png" alt="Payments">
+        <h3>Secure Payments</h3>
+        <p>Your payment is safe and secured.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    © ReliableStore — All Rights Reserved
+  </footer>
+
 </body>
 </html>
