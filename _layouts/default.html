@@ -28,5 +28,27 @@ title: About — Reliable Store
 
 
 {% include footer.html %}
+  <script>
+  // sticky header behaviour
+  (function(){
+    const topbar = document.querySelector('.site-topbar');
+    if(!topbar) return;
+    let lastScroll = 0;
+    window.addEventListener('scroll', () => {
+      const st = window.scrollY || document.documentElement.scrollTop;
+      if (st > 20) topbar.classList.add('scrolled'); else topbar.classList.remove('scrolled');
+      lastScroll = st;
+    }, {passive:true});
+  })();
+
+  // add mobile bottom nav to page
+  (function(){
+    const nav = document.createElement('div');
+    nav.className = 'mobile-bottom-nav';
+    nav.innerHTML = '<a href=\"/\">Home</a><a href=\"/all-products.html\">Products</a><a href=\"/cart.html\">Cart</a><a href=\"/contact.html\">Support</a>';
+    document.body.appendChild(nav);
+  })();
+</script>
+
 </body>
 </html>
