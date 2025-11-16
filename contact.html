@@ -4,136 +4,206 @@ title: Contact — Reliable Store
 ---
 
 <section class="hero-full" style="background:#fff;padding:30px 0;">
-  <div class="hero-inner">
+  <div class="hero-inner" style="max-width:1180px;margin:0 auto;">
     <h1>Contact Us</h1>
     <p>We're here to help! Reach out anytime.</p>
   </div>
 </section>
 
 <section class="full-bleed">
-  <div class="full-bleed-inner" style="padding:20px;">
+  <div class="full-bleed-inner" style="padding:20px; max-width:900px;margin:0 auto;">
     <h2>Send us a message</h2>
 
-        <!-- START: Contact form (replaces previous form block) -->
-<form id="contactForm" method="post" action="https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec" target="hidden_iframe">
-  <div style="max-width:720px;margin:0 auto;">
-
-    <label>
-      Name<br/>
-      <input name="name" type="text" required minlength="3"
-             style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
-             placeholder="Enter your full name"/>
-    </label>
-
-    <label>
-      Email<br/>
-      <input name="email" type="email" required
-             style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
-             placeholder="example@gmail.com"/>
-    </label>
-
-    <label>
-      Phone (10 digits)<br/>
-      <input name="phone" type="tel" required
-             pattern="^[0-9]{10}$"
-             style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
-             placeholder="10-digit mobile number"
-             title="Please enter a valid 10-digit number"/>
-    </label>
-
-    <label>
-      Message<br/>
-      <textarea name="message" rows="5" required
-                style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"></textarea>
-    </label>
-
-    <!-- hidden fields -->
-    <input type="hidden" name="clientIp" id="clientIp" value="">
-    <input type="hidden" name="userAgent" id="userAgent" value="">
-
-    <button id="sendBtn" type="button"
-            style="background:#ff8c00;color:#fff;padding:12px 20px;border:0;border-radius:6px;cursor:pointer;font-size:16px;">
-      Send Message
-    </button>
-
-    <div id="form-status" style="margin-top:16px;color:green;font-weight:600;display:none;">
-      ✔ Thank you! Your message has been sent.
-    </div>
-
-  </div>
-</form>
-
-<!-- hidden iframe for Apps Script response -->
-<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
-
-<script>
-  // Submit flow: fetch IP first, then set hidden fields, then submit the form.
-  (function(){
-    const form = document.getElementById('contactForm');
-    const sendBtn = document.getElementById('sendBtn');
-    const status = document.getElementById('form-status');
-    const uaEl = document.getElementById('userAgent');
-    const ipEl = document.getElementById('clientIp');
-
-    // Fill user agent immediately
-    if (uaEl) uaEl.value = navigator.userAgent || '';
-
-    // on click -> fetch IP then submit
-    sendBtn.addEventListener('click', async function () {
-      sendBtn.disabled = true;
-      sendBtn.textContent = 'Sending...';
-
-      try {
-        // get public IP (best-effort)
-        const r = await fetch('https://api.ipify.org?format=json', {cache: 'no-store'});
-        if (r.ok) {
-          const j = await r.json();
-          if (j && j.ip && ipEl) ipEl.value = j.ip;
-        }
-      } catch (err) {
-        console.warn('ip fetch failed', err);
-        // continue anyway — submission will proceed even if IP not found
-      }
-
-      // now submit to the hidden iframe
-      form.submit();
-
-      // show success when iframe loads response
-      const onLoad = function() {
-        status.style.display = 'block';
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Send Message';
-        // clear form fields
-        form.reset();
-        // hide status after some seconds
-        setTimeout(()=> status.style.display = 'none', 6000);
-        // remove listener
-        document.getElementById('hidden_iframe').removeEventListener('load', onLoad);
-      };
-      document.getElementById('hidden_iframe').addEventListener('load', onLoad);
-    });
-  })();
-</script>
-<!-- END: Contact form -->
-
-
-    <!-- Hidden iframe receives the Apps Script response -->
-    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
-
+    <!-- ===== START: Contact form (complete) ===== -->
+    <!-- Replace the WEB_APP_URL value with your Apps Script Web App URL (must end with /exec) -->
     <script>
-      var submitted = false;
-      function onIFrameLoad() {
-        if (!submitted) return;
-        document.getElementById('form-status').style.display = 'block';
-        document.getElementById('contactForm').reset();
-        submitted = false;
-        setTimeout(()=> document.getElementById('form-status').style.display='none', 6000);
-      }
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec"; // <- REPLACE this with your web app URL (keep the quotes)
     </script>
 
-    <p style="margin-top:18px;">Or email us at  
-      <a href="mailto:contact@reliablestore.in">contact@reliablestore.in</a>
-    </p>
+    <form id="contactForm" method="post" action="" target="hidden_iframe" novalidate>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+
+        <label>
+          Name<br/>
+          <input id="name" name="name" type="text" required minlength="3"
+                 placeholder="Enter your full name"
+                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"/>
+        </label>
+
+        <label>
+          Email<br/>
+          <input id="email" name="email" type="email" required
+                 placeholder="example@gmail.com"
+                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"/>
+        </label>
+
+        <label>
+          Phone (10 digits)<br/>
+          <input id="phone" name="phone" type="tel" required pattern="^[0-9]{10}$"
+                 placeholder="10-digit mobile number"
+                 title="Please enter a 10-digit number (digits only)"
+                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"/>
+        </label>
+
+        <label>
+          Message<br/>
+          <textarea id="message" name="message" rows="5" required
+                    style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"></textarea>
+        </label>
+
+        <!-- hidden fields for IP and user agent -->
+        <input type="hidden" name="clientIp" id="clientIp" value="">
+        <input type="hidden" name="userAgent" id="userAgent" value="">
+
+        <!-- visible status & debug (non-intrusive) -->
+        <div id="ipDebug" style="font-size:13px;color:#666;min-height:18px;"></div>
+
+        <div style="display:flex;gap:12px;align-items:center">
+          <button id="sendBtn" type="button"
+                  style="background:#ff8c00;color:#fff;padding:10px 16px;border:0;border-radius:6px;cursor:pointer">
+            Send Message
+          </button>
+
+          <div id="formStatus" style="color:green;font-weight:600;display:none;">✔ Thanks — message sent.</div>
+          <div id="formError" style="color:#b40;font-weight:600;display:none;"></div>
+        </div>
+      </div>
+    </form>
+
+    <!-- hidden iframe for Apps Script response -->
+    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+
+    <noscript style="color:#b40;margin-top:10px;">
+      JavaScript is required to submit the form. Please enable JavaScript or contact us at
+      <a href="mailto:contact@reliablestore.in">contact@reliablestore.in</a>.
+    </noscript>
+    <!-- ===== END: Contact form ===== -->
 
   </div>
 </section>
+
+<script>
+(function(){
+  // Ensure userAgent hidden field is populated immediately
+  const uaEl = document.getElementById('userAgent');
+  if (uaEl) uaEl.value = navigator.userAgent || '';
+
+  const ipEl = document.getElementById('clientIp');
+  const ipDebug = document.getElementById('ipDebug');
+  const sendBtn = document.getElementById('sendBtn');
+  const form = document.getElementById('contactForm');
+  const statusEl = document.getElementById('formStatus');
+  const errorEl = document.getElementById('formError');
+
+  // Small helper to validate client-side before submit
+  function validateForm() {
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
+    // HTML5 validation (pattern, required, type)
+    if (!form.reportValidity) {
+      // older fallback - basic checks
+      if (!document.getElementById('name').value.trim()) { errorEl.textContent='Please enter name'; errorEl.style.display='block'; return false; }
+      if (!document.getElementById('email').value.trim()) { errorEl.textContent='Please enter email'; errorEl.style.display='block'; return false; }
+      if (!/^\d{10}$/.test(document.getElementById('phone').value.trim())) { errorEl.textContent='Please enter 10 digit phone'; errorEl.style.display='block'; return false; }
+      return true;
+    }
+    // Use browser built-in validity checks
+    if (!form.checkValidity()) {
+      // Let the browser highlight invalid fields (this will show native messages)
+      form.reportValidity();
+      return false;
+    }
+    return true;
+  }
+
+  // Try to fetch public IP from two services (ipify then ifconfig.co). Best-effort.
+  async function fetchIp() {
+    const services = [
+      'https://api.ipify.org?format=json',
+      'https://ifconfig.co/json'
+    ];
+    for (const url of services) {
+      try {
+        const res = await fetch(url, {cache:'no-store'});
+        if (!res.ok) continue;
+        const j = await res.json();
+        const ip = j.ip || j.ip_address || j.query || j.ipAddress || j.address;
+        if (ip) {
+          if (ipEl) ipEl.value = ip;
+          ipDebug.textContent = 'Detected IP: ' + ip + ' (via ' + url + ')';
+          console.log('IP fetched', url, ip);
+          return ip;
+        }
+      } catch (err) {
+        console.warn('IP fetch failed', url, err);
+      }
+    }
+    ipDebug.textContent = 'IP fetch not available (blocked by browser or network).';
+    return '';
+  }
+
+  // Pre-fetch IP on page load so it's ready for most users
+  fetchIp();
+
+  // Main send flow: wait for IP briefly, then submit to apps script via iframe
+  sendBtn.addEventListener('click', async function () {
+    statusEl.style.display = 'none';
+    errorEl.style.display = 'none';
+    if (!validateForm()) return;
+
+    // ensure WEB_APP_URL is set
+    if (!window.WEB_APP_URL || window.WEB_APP_URL === "YOUR_WEBAPP_URL_HERE") {
+      errorEl.textContent = 'Missing web app URL. Please set WEB_APP_URL in the HTML.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    // set form action dynamically (so you can paste same HTML and change only WEB_APP_URL at top)
+    form.action = window.WEB_APP_URL;
+
+    // disable UI while sending
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending...';
+
+    // wait up to 3 seconds for the IP to be fetched if empty
+    if (ipEl && !ipEl.value) {
+      const start = Date.now();
+      while (!ipEl.value && Date.now() - start < 3000) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    // Final log for debugging
+    console.log('Submitting with clientIp=', ipEl ? ipEl.value : '(no clientIp)');
+
+    // Submit the form into the iframe
+    form.submit();
+
+    // When iframe loads, show success and clear form
+    const onLoad = function () {
+      statusEl.style.display = 'inline-block';
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send Message';
+      // clear form inputs
+      form.reset();
+      // re-populate userAgent and try to re-fetch IP for next submission
+      if (uaEl) uaEl.value = navigator.userAgent || '';
+      fetchIp();
+      // hide status after 5 seconds
+      setTimeout(()=> statusEl.style.display='none', 5000);
+      document.getElementById('hidden_iframe').removeEventListener('load', onLoad);
+    };
+
+    document.getElementById('hidden_iframe').addEventListener('load', onLoad);
+  });
+
+})();
+</script>
+
+<style>
+  /* small responsive tweaks for the form */
+  @media (max-width:600px) {
+    .full-bleed-inner { padding:12px !important; }
+    #sendBtn { width:100%; }
+  }
+</style>
