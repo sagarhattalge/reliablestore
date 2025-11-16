@@ -1,1 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>About Us — ReliableStore</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root{--accent:#ff5151;--muted:#6b7280;--bg:#fbfdff;--card:#ffffff}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#111}
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;gap:16px;padding:18px 0}
+    header img.logo{height:44px;object-fit:contain}
+    .hero{border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff;margin-bottom:18px}
+    .hero .inner{display:flex;gap:24px;align-items:center;padding:48px;flex-wrap:wrap}
+    .hero h1{font-size:32px;margin:0;color:#0f172a}
+    .hero p{margin:10px 0 0;color:var(--muted);max-width:720px}
+    .hero .hero-img{width:320px;height:220px;object-fit:cover;border-radius:8px;background:#f3f5f7}
+    .features{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px}
+    .feature{background:var(--card);padding:18px;border-radius:10px;text-align:center;min-height:160px;box-shadow:0 6px 20px rgba(2,6,23,0.04)}
+    .feature img{width:64px;height:64px;object-fit:contain;margin-bottom:10px}
+    .feature h3{margin:6px 0;font-size:16px}
+    .feature p{color:var(--muted);font-size:14px;margin:0}
+    @media (max-width:900px){.features{grid-template-columns:repeat(2,1fr)}.hero .inner{padding:24px}.hero .hero-img{width:100%;height:180px}}
+    @media (max-width:520px){.features{grid-template-columns:1fr}.hero{padding:12px}.hero h1{font-size:22px}}
+    footer{margin-top:36px;padding:18px 0;color:var(--muted);text-align:center}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="/"><img src="/assets/icons/Header%20Logo.png" alt="ReliableStore" class="logo" /></a>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero" aria-label="About hero">
+      <div class="inner">
+        <div style="flex:1;min-width:260px;">
+          <h1>About Reliable Store</h1>
+          <p>Reliable store is dealing with selling of all original konkan products and it is the only place where you will get all genuine and quality products.</p>
+        </div>
+        <!-- hero image: upload hero11-free-img.png to /assets/uploads/ and adjust path if needed -->
+        <img class="hero-img" src="/assets/uploads/hero11-free-img.png" alt="ReliableStore" />
+      </div>
+    </section>
+
+    <!-- optional decorative graphic -->
+    <section style="margin-bottom:18px">
+      <img src="/assets/uploads/graphic05-free-img.png" alt="" style="width:100%;border-radius:10px;display:block" />
+    </section>
+
+    <!-- Features -->
+    <section>
+      <div class="features" role="list">
+        <div class="feature" role="listitem">
+          <img src="/assets/uploads/globe-free-img.png" alt="Shipping" />
+          <h3>All India Shipping</h3>
+          <p>We and our shipping partners are always trying to ship our products at almost all locations in India.</p>
+        </div>
+        <div class="feature" role="listitem">
+          <img src="/assets/uploads/quality-free-img.png" alt="Quality" />
+          <h3>Best Quality</h3>
+          <p>All our products are fresh, original, genuine and with very good quality.</p>
+        </div>
+        <div class="feature" role="listitem">
+          <img src="/assets/uploads/tag-free-img.png" alt="Offers" />
+          <h3>Best Offers</h3>
+          <p>Keep visiting our online store for the Best Offers we are offering time to time.</p>
+        </div>
+        <div class="feature" role="listitem">
+          <img src="/assets/uploads/lock-free-img.png" alt="Payments" />
+          <h3>Secure Payments</h3>
+          <p>Your payment is safe and secured.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      © ReliableStore — All Rights Reserved
+    </footer>
+  </div>
+</body>
+</html>
 
