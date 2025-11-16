@@ -14,75 +14,108 @@ title: Contact — Reliable Store
   <div class="full-bleed-inner" style="padding:20px;">
     <h2>Send us a message</h2>
 
-    <!-- Contact form that posts to Apps Script web app -->
-    <form id="contactForm" action="https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec" method="post" target="hidden_iframe" onsubmit="submitted=true;">
-      <div style="max-width:720px;margin:0 auto;">
-        
-        <label>
-  Name<br/>
-  <input name="name" type="text" required minlength="3"
-         style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
-         placeholder="Enter your full name"/>
-</label>
+        <!-- START: Contact form (replaces previous form block) -->
+<form id="contactForm" method="post" action="https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec" target="hidden_iframe">
+  <div style="max-width:720px;margin:0 auto;">
 
-<label>
-  Email<br/>
-  <input name="email" type="email" required
-         style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
-         placeholder="example@gmail.com"/>
-</label>
+    <label>
+      Name<br/>
+      <input name="name" type="text" required minlength="3"
+             style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
+             placeholder="Enter your full name"/>
+    </label>
 
-<label>
-  Phone (10 digits)<br/>
-  <input name="phone" type="tel" required
-         pattern="^[0-9]{10}$"
-         style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
-         placeholder="10-digit mobile number"
-         title="Please enter a valid 10-digit number"/>
-</label>
+    <label>
+      Email<br/>
+      <input name="email" type="email" required
+             style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
+             placeholder="example@gmail.com"/>
+    </label>
 
+    <label>
+      Phone (10 digits)<br/>
+      <input name="phone" type="tel" required
+             pattern="^[0-9]{10}$"
+             style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"
+             placeholder="10-digit mobile number"
+             title="Please enter a valid 10-digit number"/>
+    </label>
 
-        <label>
-          Message<br/>
-          <textarea name="message" rows="5" required style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"></textarea>
-        </label>
+    <label>
+      Message<br/>
+      <textarea name="message" rows="5" required
+                style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"></textarea>
+    </label>
 
-        <button type="submit" style="background:#ff8c00;color:#fff;padding:12px 20px;border:0;border-radius:6px;cursor:pointer;font-size:16px;">
-          Send Message
-          <!-- hidden field to hold visitor's public IP (set by JS) -->
-<input type="hidden" name="clientIp" id="clientIp" value="">
+    <!-- hidden fields -->
+    <input type="hidden" name="clientIp" id="clientIp" value="">
+    <input type="hidden" name="userAgent" id="userAgent" value="">
+
+    <button id="sendBtn" type="button"
+            style="background:#ff8c00;color:#fff;padding:12px 20px;border:0;border-radius:6px;cursor:pointer;font-size:16px;">
+      Send Message
+    </button>
+
+    <div id="form-status" style="margin-top:16px;color:green;font-weight:600;display:none;">
+      ✔ Thank you! Your message has been sent.
+    </div>
+
+  </div>
+</form>
+
+<!-- hidden iframe for Apps Script response -->
+<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
 
 <script>
-  // Fetch public IP and store it in hidden field (uses ipify, free)
-  // Runs on page load; best-effort (if it fails, clientIp remains blank)
-  (function() {
-    try {
-      fetch('https://api.ipify.org?format=json')
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.ip) {
-            const el = document.getElementById('clientIp');
-            if (el) el.value = data.ip;
-          }
-        })
-        .catch(err => {
-          // silent fail — not critical
-          console.warn('ip fetch failed', err);
-        });
-    } catch(e) {
-      console.warn('ip fetch error', e);
-    }
+  // Submit flow: fetch IP first, then set hidden fields, then submit the form.
+  (function(){
+    const form = document.getElementById('contactForm');
+    const sendBtn = document.getElementById('sendBtn');
+    const status = document.getElementById('form-status');
+    const uaEl = document.getElementById('userAgent');
+    const ipEl = document.getElementById('clientIp');
+
+    // Fill user agent immediately
+    if (uaEl) uaEl.value = navigator.userAgent || '';
+
+    // on click -> fetch IP then submit
+    sendBtn.addEventListener('click', async function () {
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending...';
+
+      try {
+        // get public IP (best-effort)
+        const r = await fetch('https://api.ipify.org?format=json', {cache: 'no-store'});
+        if (r.ok) {
+          const j = await r.json();
+          if (j && j.ip && ipEl) ipEl.value = j.ip;
+        }
+      } catch (err) {
+        console.warn('ip fetch failed', err);
+        // continue anyway — submission will proceed even if IP not found
+      }
+
+      // now submit to the hidden iframe
+      form.submit();
+
+      // show success when iframe loads response
+      const onLoad = function() {
+        status.style.display = 'block';
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Message';
+        // clear form fields
+        form.reset();
+        // hide status after some seconds
+        setTimeout(()=> status.style.display = 'none', 6000);
+        // remove listener
+        document.getElementById('hidden_iframe').removeEventListener('load', onLoad);
+      };
+      document.getElementById('hidden_iframe').addEventListener('load', onLoad);
+    });
   })();
 </script>
+<!-- END: Contact form -->
 
-        </button>
-
-        <div id="form-status" style="margin-top:16px;color:green;font-weight:600;display:none;">
-          ✔ Thank you! Your message has been sent.
-        </div>
-
-      </div>
-    </form>
 
     <!-- Hidden iframe receives the Apps Script response -->
     <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
