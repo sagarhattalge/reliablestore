@@ -14,12 +14,58 @@ title: Contact — Reliable Store
   <div class="full-bleed-inner" style="padding:20px;">
     <h2>Send us a message</h2>
 
-    <!-- Replace THIS iframe with your real Google Form embed -->
-    <iframe src="https://docs.google.com/forms/d/e/YOUR_FORM_ID/viewform?embedded=true"
-            width="100%" height="800" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+    <!-- Contact form that posts to Apps Script web app -->
+    <form id="contactForm" action="https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec" method="post" target="hidden_iframe" onsubmit="submitted=true;">
+      <div style="max-width:720px;margin:0 auto;">
+        
+        <label>
+          Name<br/>
+          <input name="name" type="text" required style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"/>
+        </label>
+
+        <label>
+          Email<br/>
+          <input name="email" type="email" required style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"/>
+        </label>
+
+        <label>
+          Phone<br/>
+          <input name="phone" type="tel" style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"/>
+        </label>
+
+        <label>
+          Message<br/>
+          <textarea name="message" rows="5" required style="width:100%;padding:10px;margin-bottom:12px;border-radius:6px;border:1px solid #ccc;"></textarea>
+        </label>
+
+        <button type="submit" style="background:#ff8c00;color:#fff;padding:12px 20px;border:0;border-radius:6px;cursor:pointer;font-size:16px;">
+          Send Message
+        </button>
+
+        <div id="form-status" style="margin-top:16px;color:green;font-weight:600;display:none;">
+          ✔ Thank you! Your message has been sent.
+        </div>
+
+      </div>
+    </form>
+
+    <!-- Hidden iframe receives the Apps Script response -->
+    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
+
+    <script>
+      var submitted = false;
+      function onIFrameLoad() {
+        if (!submitted) return;
+        document.getElementById('form-status').style.display = 'block';
+        document.getElementById('contactForm').reset();
+        submitted = false;
+        setTimeout(()=> document.getElementById('form-status').style.display='none', 6000);
+      }
+    </script>
 
     <p style="margin-top:18px;">Or email us at  
       <a href="mailto:contact@reliablestore.in">contact@reliablestore.in</a>
     </p>
+
   </div>
 </section>
