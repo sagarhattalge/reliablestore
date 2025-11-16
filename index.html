@@ -1,107 +1,93 @@
 ---
 layout: default
-title: Reliable Store — Home
+title: Home — Reliable Store
 ---
 
-<!-- HERO SECTION -->
-<section class="hero-full" role="banner" aria-label="Homepage hero"
-  style="background-image:url('/assets/uploads/hero11-free-img.png'); background-size:cover; background-position:center;">
-  
-  <div class="hero-overlay" style="position:absolute;inset:0;background:rgba(255,255,255,0.55);"></div>
+<!-- FULL-BLEED HERO -->
+<section class="hero-full" role="banner" aria-label="Home hero"
+         style="background-image:url('/assets/uploads/hero11-free-img.png');">
+  <div class="hero-overlay"></div>
+  <div class="hero-inner">
+    <h1>Welcome to Reliable Store</h1>
+    <p>Authentic Konkan products delivered straight to your doorstep. Quality you trust, service you deserve.</p>
 
-  <div class="hero-inner" style="position:relative;z-index:2;max-width:1180px;margin:0 auto;padding:56px 20px;text-align:center;">
-    <h1 style="font-size:46px;margin:0;color:#222;">
-      Welcome to Reliable Store
-    </h1>
-    <p style="color:#6b7280;margin:12px 0 0;max-width:880px;margin-left:auto;margin-right:auto;line-height:1.6;">
-      Authentic Konkan products delivered straight to your doorstep.  
-      Quality you trust, service you deserve.
-    </p>
+    <!-- simple search -->
+    <form id="searchForm" style="margin-top:18px;display:flex;gap:8px;max-width:920px;margin-left:auto;margin-right:auto;">
+      <input id="searchInput" type="search" placeholder="Search for products..." style="flex:1;padding:10px;border-radius:6px;border:1px solid #e6e9ef" />
+      <button type="button" onclick="doSearch()" style="background:#ff8c00;color:#fff;padding:10px 14px;border-radius:6px;border:0">Search</button>
+    </form>
   </div>
 </section>
 
-<!-- SEARCH BAR -->
-<div style="width:100%;background:#fff;padding:24px 0;box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-  <div style="max-width:1180px;margin:0 auto;padding:0 20px;display:flex;gap:12px;">
-    <input type="search" placeholder="Search for products..." 
-           style="flex:1;padding:12px 14px;font-size:16px;border:1px solid #ccc;border-radius:6px;">
-    <button style="background:#ff8c00;color:#fff;border:0;padding:12px 20px;border-radius:6px;cursor:pointer;font-size:16px;">
-      Search
-    </button>
-  </div>
-</div>
-
-<!-- CATEGORY SHORTCUTS (like original site) -->
-<section style="max-width:1180px;margin:30px auto;padding:0 20px;">
-  <h2 style="margin-bottom:14px;">Shop by Category</h2>
-  <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;">
-    <a href="/all-products.html" style="padding:12px 18px;background:#fff;border-radius:8px;
-         box-shadow:0 4px 10px rgba(0,0,0,0.05);white-space:nowrap;">
-      All Products
-    </a>
-    <a href="/category.html" style="padding:12px 18px;background:#fff;border-radius:8px;
-         box-shadow:0 4px 10px rgba(0,0,0,0.05);white-space:nowrap;">
-      Grocery & Gourmet Foods
-    </a>
-    <a href="/contact.html" style="padding:12px 18px;background:#fff;border-radius:8px;
-         box-shadow:0 4px 10px rgba(0,0,0,0.05);white-space:nowrap;">
-      Contact & Support
-    </a>
+<!-- CATEGORY BUBBLES (centered container) -->
+<section class="full-bleed">
+  <div class="full-bleed-inner" style="padding-top:22px;padding-bottom:22px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a class="chip" href="/all-products.html">All Products</a>
+      <a class="chip" href="/category.html">Grocery &amp; Gourmet Foods</a>
+      <a class="chip" href="/contact.html">Contact &amp; Support</a>
+    </div>
   </div>
 </section>
 
 <!-- FEATURED PRODUCTS -->
-<section style="max-width:1180px;margin:30px auto;padding:0 20px;">
-  <h2 style="margin-bottom:20px;">Featured Products</h2>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;">
-
-    <!-- Product 1 -->
-    <div style="background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.05);padding:14px;">
-      <img src="https://via.placeholder.com/260x200?text=Charger" 
-           alt="Fast Charger" 
-           style="width:100%;height:160px;object-fit:contain;background:#fff;border-radius:8px;">
-      <h3 style="font-size:16px;margin:12px 0 4px;">Fast Charger 30W</h3>
-      <div style="font-weight:600;font-size:18px;color:#333;">₹699</div>
-      <button onclick="addToCart()" style="margin-top:12px;width:100%;background:#0ea5e9;color:#fff;
-              border-radius:6px;border:0;padding:10px 0;cursor:pointer;font-size:15px;">
-        Add to Cart
-      </button>
-    </div>
-
-    <!-- Product 2 -->
-    <div style="background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.05);padding:14px;">
-      <img src="https://via.placeholder.com/260x200?text=Cable" 
-           alt="Type-C Cable" 
-           style="width:100%;height:160px;object-fit:contain;background:#fff;border-radius:8px;">
-      <h3 style="font-size:16px;margin:12px 0 4px;">Type-C Cable 1m</h3>
-      <div style="font-weight:600;font-size:18px;color:#333;">₹249</div>
-      <button onclick="addToCart()" style="margin-top:12px;width:100%;background:#0ea5e9;color:#fff;
-              border-radius:6px;border:0;padding:10px 0;cursor:pointer;font-size:15px;">
-        Add to Cart
-      </button>
-    </div>
-
-    <!-- Product 3 -->
-    <div style="background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.05);padding:14px;">
-      <img src="https://via.placeholder.com/260x200?text=Power+Bank" 
-           alt="Power Bank" 
-           style="width:100%;height:160px;object-fit:contain;background:#fff;border-radius:8px;">
-      <h3 style="font-size:16px;margin:12px 0 4px;">Power Bank 20000mAh</h3>
-      <div style="font-weight:600;font-size:18px;color:#333;">₹1299</div>
-      <button onclick="addToCart()" style="margin-top:12px;width:100%;background:#0ea5e9;color:#fff;
-              border-radius:6px;border:0;padding:10px 0;cursor:pointer;font-size:15px;">
-        Add to Cart
-      </button>
-    </div>
-
+<section class="features-band">
+  <div class="features-wrap" id="product-list">
+    <!-- JS will inject product cards -->
   </div>
 </section>
 
-<!-- JS -->
 <script>
-function addToCart(){
-  const el = document.getElementById("cart-count");
-  if(el) el.textContent = Number(el.textContent) + 1;
-}
+  // demo product list — replace or expand
+  const products = [
+    { id: 1, name: 'Fast Charger 30W', price: 699, img: '/assets/uploads/charger-300x200.webp' },
+    { id: 2, name: 'Type-C Cable 1m', price: 249, img: '/assets/uploads/cable-300x200.webp' },
+    { id: 3, name: 'Power Bank 20000mAh', price: 1299, img: '/assets/uploads/powerbank-300x200.webp' }
+  ];
+
+  function renderProducts() {
+    const list = document.getElementById('product-list');
+    list.innerHTML = '';
+    products.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'feature';
+      el.innerHTML = `
+        <img src="${p.img}" alt="${p.name}" loading="lazy" style="height:160px;object-fit:contain;margin-bottom:12px"/>
+        <h3 style="font-size:16px">${p.name}</h3>
+        <p style="font-weight:700;margin:8px 0">₹${p.price}</p>
+        <button class="add-btn" onclick="addToCart(${p.id})" style="background:#06a6ff;color:#fff;border:0;padding:10px;border-radius:8px;cursor:pointer">Add to Cart</button>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  function addToCart(id) {
+    const cntEl = document.getElementById('cart-count');
+    cntEl.textContent = Number(cntEl.textContent || 0) + 1;
+  }
+
+  function doSearch() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (!q) return alert('Enter a search term');
+    const results = products.filter(p => p.name.toLowerCase().includes(q));
+    if (results.length===0) alert('No results');
+    else {
+      // simple behaviour: show only matching products
+      const list = document.getElementById('product-list');
+      list.innerHTML = '';
+      results.forEach(p=> {
+        const el = document.createElement('div');
+        el.className = 'feature';
+        el.innerHTML = `
+          <img src="${p.img}" alt="${p.name}" loading="lazy" style="height:160px;object-fit:contain;margin-bottom:12px"/>
+          <h3 style="font-size:16px">${p.name}</h3>
+          <p style="font-weight:700;margin:8px 0">₹${p.price}</p>
+        `;
+        list.appendChild(el);
+      });
+    }
+  }
+
+  // initial render
+  document.addEventListener('DOMContentLoaded', renderProducts);
 </script>
