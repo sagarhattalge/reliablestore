@@ -139,3 +139,86 @@ body{
     align-items:flex-start;
   }
 }
+/* --- Mobile fixes (patch) --- */
+
+/* Ensure header stacks cleanly and nav scrolls when too many links */
+@media (max-width: 760px) {
+  .site-topbar .wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  /* make nav horizontally scrollable instead of wrapping awkwardly */
+  .site-nav {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    margin-left: 0;
+  }
+  .site-nav a {
+    white-space: nowrap;
+    padding: 6px 8px;
+    font-size: 14px;
+    display: inline-block;
+  }
+
+  /* header actions (cart/login) move below nav and align left */
+  .header-actions {
+    margin-left: 0;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-top: 6px;
+  }
+
+  /* reduce hero padding and font sizes for narrow screens */
+  .hero-inner {
+    padding: 24px 12px;
+    text-align: left;
+  }
+  .hero-inner h1 {
+    font-size: 22px;
+    line-height: 1.15;
+  }
+  .hero-inner p {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 8px;
+  }
+
+  /* hide large decorative right-hand images inside hero */
+  .hero-deco, .hero-right {
+    display: none !important;
+  }
+
+  /* features should stack vertically for best mobile UX */
+  .features-wrap {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+    padding: 18px 12px;
+  }
+
+  /* reduce footer paddings and stack columns */
+  .site-footer .wrap {
+    flex-direction: column;
+    gap: 18px;
+  }
+}
+
+/* small tweak for slightly larger phones / tablets */
+@media (min-width: 761px) and (max-width: 1000px) {
+  .hero-inner h1 { font-size: 28px; }
+  .hero-inner { padding: 32px 18px; }
+  .features-wrap { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+}
+
+/* ensure images scale nicely */
+img { max-width: 100%; height: auto; display: block; }
+
+/* avoid the hero overlay covering header on very short screens */
+@media (max-height: 540px) {
+  .hero-overlay { background: rgba(255,255,255,0.45); }
+}
