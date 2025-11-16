@@ -14,4 +14,5 @@ Replace the placeholder links in `assets/js/cart.js` where it says:
 - `#replace-with-paypal-link`
 
 with real payment links you create in your payment provider's dashboard.
- 
+
+ rebuild
