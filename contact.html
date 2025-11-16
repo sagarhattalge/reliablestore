@@ -15,9 +15,9 @@ title: Contact — Reliable Store
     <h2>Send us a message</h2>
 
     <!-- ===== START: Contact form (complete) ===== -->
-    <!-- Replace the WEB_APP_URL value with your Apps Script Web App URL (must end with /exec) -->
     <script>
-      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec"; // <- REPLACE this with your web app URL (keep the quotes)
+      // Web App URL (Apps Script) - already set to the URL you provided
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec";
     </script>
 
     <form id="contactForm" method="post" action="" target="hidden_iframe" novalidate>
@@ -84,7 +84,7 @@ title: Contact — Reliable Store
 
 <script>
 (function(){
-  // Ensure userAgent hidden field is populated immediately
+  // fill userAgent immediately
   const uaEl = document.getElementById('userAgent');
   if (uaEl) uaEl.value = navigator.userAgent || '';
 
@@ -95,28 +95,17 @@ title: Contact — Reliable Store
   const statusEl = document.getElementById('formStatus');
   const errorEl = document.getElementById('formError');
 
-  // Small helper to validate client-side before submit
   function validateForm() {
     errorEl.style.display = 'none';
     errorEl.textContent = '';
-    // HTML5 validation (pattern, required, type)
-    if (!form.reportValidity) {
-      // older fallback - basic checks
-      if (!document.getElementById('name').value.trim()) { errorEl.textContent='Please enter name'; errorEl.style.display='block'; return false; }
-      if (!document.getElementById('email').value.trim()) { errorEl.textContent='Please enter email'; errorEl.style.display='block'; return false; }
-      if (!/^\d{10}$/.test(document.getElementById('phone').value.trim())) { errorEl.textContent='Please enter 10 digit phone'; errorEl.style.display='block'; return false; }
-      return true;
-    }
-    // Use browser built-in validity checks
+    // browser validation
     if (!form.checkValidity()) {
-      // Let the browser highlight invalid fields (this will show native messages)
       form.reportValidity();
       return false;
     }
     return true;
   }
 
-  // Try to fetch public IP from two services (ipify then ifconfig.co). Best-effort.
   async function fetchIp() {
     const services = [
       'https://api.ipify.org?format=json',
@@ -142,30 +131,25 @@ title: Contact — Reliable Store
     return '';
   }
 
-  // Pre-fetch IP on page load so it's ready for most users
+  // prefetch IP
   fetchIp();
 
-  // Main send flow: wait for IP briefly, then submit to apps script via iframe
   sendBtn.addEventListener('click', async function () {
     statusEl.style.display = 'none';
     errorEl.style.display = 'none';
     if (!validateForm()) return;
 
-    // ensure WEB_APP_URL is set
     if (!window.WEB_APP_URL || window.WEB_APP_URL === "YOUR_WEBAPP_URL_HERE") {
       errorEl.textContent = 'Missing web app URL. Please set WEB_APP_URL in the HTML.';
       errorEl.style.display = 'block';
       return;
     }
 
-    // set form action dynamically (so you can paste same HTML and change only WEB_APP_URL at top)
     form.action = window.WEB_APP_URL;
 
-    // disable UI while sending
     sendBtn.disabled = true;
     sendBtn.textContent = 'Sending...';
 
-    // wait up to 3 seconds for the IP to be fetched if empty
     if (ipEl && !ipEl.value) {
       const start = Date.now();
       while (!ipEl.value && Date.now() - start < 3000) {
@@ -173,23 +157,17 @@ title: Contact — Reliable Store
       }
     }
 
-    // Final log for debugging
     console.log('Submitting with clientIp=', ipEl ? ipEl.value : '(no clientIp)');
 
-    // Submit the form into the iframe
     form.submit();
 
-    // When iframe loads, show success and clear form
     const onLoad = function () {
       statusEl.style.display = 'inline-block';
       sendBtn.disabled = false;
       sendBtn.textContent = 'Send Message';
-      // clear form inputs
       form.reset();
-      // re-populate userAgent and try to re-fetch IP for next submission
       if (uaEl) uaEl.value = navigator.userAgent || '';
       fetchIp();
-      // hide status after 5 seconds
       setTimeout(()=> statusEl.style.display='none', 5000);
       document.getElementById('hidden_iframe').removeEventListener('load', onLoad);
     };
@@ -201,7 +179,6 @@ title: Contact — Reliable Store
 </script>
 
 <style>
-  /* small responsive tweaks for the form */
   @media (max-width:600px) {
     .full-bleed-inner { padding:12px !important; }
     #sendBtn { width:100%; }
