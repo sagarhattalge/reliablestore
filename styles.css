@@ -222,3 +222,140 @@ img { max-width: 100%; height: auto; display: block; }
 @media (max-height: 540px) {
   .hero-overlay { background: rgba(255,255,255,0.45); }
 }
+/* ================================
+   FULL-BLEED LAYOUT (OPTION B)
+   Makes hero, bands, features, and footer stretch edge-to-edge
+   Keeps inner content neatly centered with large max-width
+   ================================ */
+
+/* Full-width outer wrappers */
+.hero-full,
+.features-band,
+.site-footer,
+.full-bleed {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Inner containers for readable content */
+.hero-inner,
+.features-wrap,
+.site-footer .wrap,
+.full-bleed-inner {
+  max-width: 1600px;            /* adjust up to 1800px if you want bigger */
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* Hero adjustments */
+.hero-full {
+  background-size: cover;
+  background-position: center;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.hero-inner h1 {
+  font-size: 46px;
+  margin-bottom: 12px;
+}
+
+.hero-inner p {
+  font-size: 18px;
+  max-width: 900px;
+}
+
+/* Features grid — expands fully */
+.features-wrap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 28px;
+  padding: 40px 24px;
+}
+
+/* Make feature cards nicer on large screens */
+.feature {
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  min-height: 150px;
+}
+
+/* Footer becomes full-bleed with centered columns */
+.site-footer {
+  padding: 50px 0;
+  background: #0f1720 !important;
+  color: #d1d5db;
+}
+
+.site-footer .wrap {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+/* Footer columns spacing */
+.site-footer .wrap > div {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* Make topbar (header) full-width too */
+.site-topbar {
+  width: 100%;
+  margin: 0;
+  left: 0;
+  right: 0;
+  padding: 14px 0;
+}
+
+/* Ensure nav also expands full page */
+.site-topbar .wrap {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ================================
+   Responsive for smaller screens
+   ================================ */
+@media (max-width: 768px) {
+
+  .hero-inner {
+    padding: 36px 18px;
+    text-align: left;
+  }
+
+  .hero-inner h1 {
+    font-size: 28px;
+    line-height: 1.2;
+  }
+
+  .hero-inner p {
+    font-size: 14px;
+    max-width: 100%;
+  }
+
+  .features-wrap {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 24px 14px;
+  }
+
+  .site-footer .wrap {
+    flex-direction: column;
+    gap: 22px;
+  }
+}
+
+/* Ensure images scale nicely */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
