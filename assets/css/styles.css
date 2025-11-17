@@ -302,3 +302,69 @@ img{max-width:100%;display:block}
     font-size:14px;
   }
 }
+
+/* ---------------------------
+   Fix: Hero background scale + logo sizing
+   Add this to end of assets/css/styles.css
+   --------------------------- */
+
+/* Ensure hero background always covers without stretching */
+.hero-full {
+  background-repeat: no-repeat !important;
+  background-size: cover !important;        /* cover preserves aspect ratio */
+  background-position: center center !important;
+  min-height: 260px;                        /* keep a stable hero height */
+  display: flex;
+  align-items: center;
+}
+
+/* Restrict any right/decoration image inside hero (if used as <img>) */
+.hero-full img,
+.hero-deco img,
+.hero-right img {
+  max-width: 100%;
+  height: auto !important;
+  object-fit: contain !important;
+  display: block;
+}
+
+/* Logo sizing (keeps header logo tidy) */
+.site-topbar .logo,
+.site-header .logo {
+  height: 44px;     /* set desired header logo height */
+  width: auto;
+  max-width: 220px; /* prevents very wide logos */
+  display: block;
+}
+
+/* Make sure hero-inner doesn't shrink horizontally */
+.hero-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 38px 20px;
+}
+
+/* Small tweak so hero text area and category band don't overlap */
+.full-bleed-inner, .hero-inner {
+  box-sizing: border-box;
+}
+
+/* ---------------------------
+   Temporary quick-hide for duplicated small nav under hero
+   (useful while you confirm the HTML change)
+   --------------------------- */
+
+/* Hide the small repeated category row that appears directly after hero */
+.hero-full + .full-bleed .full-bleed-inner > .category-row,
+.hero-full + .full-bleed .full-bleed-inner .category-links,
+.hero-full + .full-bleed .full-bleed-inner nav.small-nav {
+  display: none !important;
+}
+
+/* If you prefer to show it but make it subtle (instead of hiding), use:
+.hero-full + .full-bleed .full-bleed-inner .category-links {
+  opacity: 0.6;
+  color: var(--muted);
+  font-size: 14px;
+}
+*/
