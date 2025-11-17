@@ -1,54 +1,42 @@
----
-layout: default
-title: About — Reliable Store
----
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>{{ page.title | default: site.title }}</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ page.title | default: site.title }}</title>
 
+  <!-- Favicons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
 
-<!-- Favicons -->
-<link rel="icon" href="/assets/icons/favicon.png" />
-<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
-<link rel="icon" sizes="192x192" href="/assets/icons/android-chrome-192.png" />
-<link rel="icon" sizes="512x512" href="/assets/icons/android-chrome-512.png" />
+  <!-- Styles -->
+  <link rel="stylesheet" href="/assets/styles.css" />
 
-
-<link rel="stylesheet" href="/styles.css">
+  <!-- Small site meta -->
+  <meta name="theme-color" content="#FE9900" />
 </head>
 <body>
-{% include header.html %}
+  {% include header.html %}
 
+  <main>
+    {{ content }}
+  </main>
 
-<main>
-{{ content }}
-</main>
+  {% include footer.html %}
 
-
-{% include footer.html %}
+  <!-- lightweight page behaviour -->
   <script>
-  // sticky header behaviour
-  (function(){
-    const topbar = document.querySelector('.site-topbar');
-    if(!topbar) return;
-    let lastScroll = 0;
-    window.addEventListener('scroll', () => {
-      const st = window.scrollY || document.documentElement.scrollTop;
-      if (st > 20) topbar.classList.add('scrolled'); else topbar.classList.remove('scrolled');
-      lastScroll = st;
-    }, {passive:true});
-  })();
-
-  // add mobile bottom nav to page
-  (function(){
-    const nav = document.createElement('div');
-    nav.className = 'mobile-bottom-nav';
-    nav.innerHTML = '<a href=\"/\">Home</a><a href=\"/all-products.html\">Products</a><a href=\"/cart.html\">Cart</a><a href=\"/contact.html\">Support</a>';
-    document.body.appendChild(nav);
-  })();
-</script>
-
+    // sticky header shadow on scroll
+    (function(){
+      const bar = document.querySelector('.site-topbar');
+      if (!bar) return;
+      const onScroll = () => {
+        if (window.scrollY > 12) bar.classList.add('scrolled');
+        else bar.classList.remove('scrolled');
+      };
+      document.addEventListener('scroll', onScroll, {passive:true});
+      onScroll();
+    })();
+  </script>
 </body>
 </html>
