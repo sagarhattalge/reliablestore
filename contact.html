@@ -3,7 +3,6 @@ layout: default
 title: Contact — Reliable Store
 ---
 
-<!-- rebuild-timestamp: 2025-11-17-SH -->
 <section class="hero-full" style="background:#fff;padding:30px 0;">
   <div class="hero-inner" style="max-width:1180px;margin:0 auto;">
     <h1>Contact Us</h1>
@@ -16,12 +15,7 @@ title: Contact — Reliable Store
     <h2>Send us a message</h2>
 
     <!-- ===== START: Contact form (complete) ===== -->
-    <script>
-      // <-- YOUR APPS SCRIPT WEB APP URL (already inserted) -->
-      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec";
-    </script>
-
-    <form id="contactForm" method="post" action="" target="_self" novalidate>
+    <form id="contactForm" method="post" action="" target="hidden_iframe" novalidate>
       <div style="display:flex;flex-direction:column;gap:12px;">
 
         <label>
@@ -65,8 +59,8 @@ title: Contact — Reliable Store
             Send Message
           </button>
 
-          <div id="formStatus" style="color:green;font-weight:600;display:none;">✔ Thanks — message sent.</div>
-          <div id="formError" style="color:#b40;font-weight:600;display:none;"></div>
+          <div id="formStatus" style="color:green;font-weight:600;display:none;margin-left:8px;">✔ Thanks — message sent.</div>
+          <div id="formError" style="color:#b40;font-weight:600;display:none;margin-left:8px;"></div>
         </div>
       </div>
     </form>
@@ -83,9 +77,13 @@ title: Contact — Reliable Store
   </div>
 </section>
 
+<!-- ===== Final script block (placed after form so Jekyll won't strip it) ===== -->
 <script>
 (function(){
-  // fill userAgent immediately
+  // ← YOUR APPS SCRIPT WEB APP URL (already inserted)
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTv5LvRsW-nUqCMcm3R8r5QKQUTonxCxH9byBEQ9mDEAtzv9mK-WnSROAx8oGc8dfIrg/exec";
+
+  // Elements
   const uaEl = document.getElementById('userAgent');
   if (uaEl) uaEl.value = navigator.userAgent || '';
 
@@ -95,18 +93,29 @@ title: Contact — Reliable Store
   const form = document.getElementById('contactForm');
   const statusEl = document.getElementById('formStatus');
   const errorEl = document.getElementById('formError');
+  const iframe = document.getElementById('hidden_iframe');
 
+  // Ensure form has correct action & target (set programmatically to avoid Jekyll stripping)
+  document.addEventListener("DOMContentLoaded", function () {
+    if (form && WEB_APP_URL) {
+      form.action = WEB_APP_URL;
+      form.target = "hidden_iframe"; // final production: hidden iframe to avoid navigation
+    }
+  });
+
+  // Simple validation wrapper
   function validateForm() {
     errorEl.style.display = 'none';
     errorEl.textContent = '';
-    // browser validation
     if (!form.checkValidity()) {
+      // show built-in validation feedback if invalid
       form.reportValidity();
       return false;
     }
     return true;
   }
 
+  // Try multiple public IP providers (best-effort)
   async function fetchIp() {
     const services = [
       'https://api.ipify.org?format=json',
@@ -132,27 +141,29 @@ title: Contact — Reliable Store
     return '';
   }
 
-  // prefetch IP
+  // Pre-fetch IP so it's usually ready when user submits
   fetchIp();
 
+  // Submit logic
   sendBtn.addEventListener('click', async function () {
     statusEl.style.display = 'none';
     errorEl.style.display = 'none';
     if (!validateForm()) return;
 
-    // ensure WEB_APP_URL exists
-    if (!window.WEB_APP_URL && (typeof WEB_APP_URL === 'undefined' || WEB_APP_URL === "")) {
-      errorEl.textContent = 'Missing web app URL. Please set WEB_APP_URL in the HTML.';
+    if (!WEB_APP_URL) {
+      errorEl.textContent = 'Missing web app URL. Please contact admin.';
       errorEl.style.display = 'block';
       return;
     }
 
-    // set action
+    // dynamic ensure action (defense-in-depth)
     form.action = WEB_APP_URL;
+    form.target = "hidden_iframe";
 
     sendBtn.disabled = true;
     sendBtn.textContent = 'Sending...';
 
+    // wait briefly for IP fetch (up to 3s)
     if (ipEl && !ipEl.value) {
       const start = Date.now();
       while (!ipEl.value && Date.now() - start < 3000) {
@@ -160,28 +171,34 @@ title: Contact — Reliable Store
       }
     }
 
+    // debug log
     console.log('Submitting with clientIp=', ipEl ? ipEl.value : '(no clientIp)');
 
+    // Submit to the Apps Script web app (response will load in hidden iframe)
     form.submit();
 
+    // When iframe loads after Apps Script returns, show friendly message
     const onLoad = function () {
       statusEl.style.display = 'inline-block';
       sendBtn.disabled = false;
       sendBtn.textContent = 'Send Message';
-      form.reset();
+      // clear form
+      try { form.reset(); } catch (e) { /* ignore */ }
+      // repopulate userAgent and try fetching IP again
       if (uaEl) uaEl.value = navigator.userAgent || '';
       fetchIp();
       setTimeout(()=> statusEl.style.display='none', 5000);
-      document.getElementById('hidden_iframe').removeEventListener('load', onLoad);
+      iframe.removeEventListener('load', onLoad);
     };
 
-    document.getElementById('hidden_iframe').addEventListener('load', onLoad);
+    iframe.addEventListener('load', onLoad);
   });
 
 })();
 </script>
 
 <style>
+  /* small responsive tweaks */
   @media (max-width:600px) {
     .full-bleed-inner { padding:12px !important; }
     #sendBtn { width:100%; }
