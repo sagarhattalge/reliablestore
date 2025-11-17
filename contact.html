@@ -61,9 +61,6 @@ title: Contact — Reliable Store
         <div id="form-status" style="margin-top:12px;color:green;display:none;">Thanks! Your message was sent.</div>
         <div id="form-error" style="margin-top:12px;color:#b00020;display:none;"></div>
 
-        <!-- Visible IP for customer (as you requested) -->
-        <div id="show-ip" style="font-size:13px;color:#444;margin-top:6px;">Detecting IP...</div>
-
         <button id="sendBtn" type="submit" style="background:#ff8c00;color:#fff;padding:10px 16px;border:0;border-radius:6px;cursor:pointer">
           Send Message
         </button>
@@ -73,127 +70,24 @@ title: Contact — Reliable Store
     <!-- Hidden iframe to receive webapp response -->
     <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
 
-    <script>
-    (function(){
-      // Elements
-      const form = document.getElementById('contactForm');
-      const sendBtn = document.getElementById('sendBtn');
-      const statusEl = document.getElementById('form-status');
-      const errEl = document.getElementById('form-error');
-      const clientIpEl = document.getElementById('clientIp');
-      const userAgentEl = document.getElementById('userAgent');
-      const hpEl = document.getElementById('hp');
-      const showIp = document.getElementById('show-ip');
-
-      // set UA
-      if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
-
-      // display IP if found and set hidden field
-      async function fetchIp() {
-        const sv = [
-          'https://api.ipify.org?format=json',
-          'https://ifconfig.co/json',
-          'https://api64.ipify.org?format=json'
-        ];
-        for (const url of sv) {
-          try {
-            const res = await fetch(url, {cache:'no-store'});
-            if (!res.ok) continue;
-            const j = await res.json();
-            const ip = j && (j.ip || j.ip_address || j.query || j.ipAddress || j.address);
-            if (ip) {
-              clientIpEl.value = ip;
-              if (showIp) showIp.textContent = 'Your IP: ' + ip;
-              return ip;
-            }
-          } catch (e) {
-            // ignore and try next
-          }
-        }
-        if (showIp) showIp.textContent = 'IP not detected';
-        return '';
-      }
-
-      // attempt to fetch IP on load (do not block user for long)
-      fetchIp();
-
-      // iframe handler
-      let submitted = false;
-      window.onIFrameLoad = function(){
-        if (!submitted) return;
-        statusEl.style.display = 'block';
-        errEl.style.display = 'none';
-        form.reset();
-        // reset hidden fields & userAgent
-        clientIpEl.value = '';
-        if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
-        submitted = false;
-        setTimeout(()=> statusEl.style.display = 'none', 5000);
-      };
-
-      // client-side validators
-      function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e||'').toLowerCase()); }
-      function validPhone(p){ return /^[0-9]{10}$/.test(String((p||'').replace(/\D/g,''))); }
-
-      // submit
-      form.addEventListener('submit', async function(ev){
-        ev.preventDefault();
-        errEl.style.display = 'none';
-        statusEl.style.display = 'none';
-
-        // honeypot check
-        if (hpEl && hpEl.value && hpEl.value.trim() !== '') return;
-
-        const name = (document.getElementById('name')||{}).value || '';
-        const email = (document.getElementById('email')||{}).value || '';
-        const phone = (document.getElementById('phone')||{}).value || '';
-        const message = (document.getElementById('message')||{}).value || '';
-
-        const errors = [];
-        if (name.trim().length < 2) errors.push('Please enter your name (2+ characters).');
-        if (!validEmail(email)) errors.push('Please enter a valid email address.');
-        if (!validPhone(phone)) errors.push('Please enter a valid 10-digit phone number.');
-        if (message.trim().length < 3) errors.push('Please enter a short message.');
-
-        if (errors.length) {
-          errEl.style.display = 'block';
-          errEl.innerText = errors.join(' ');
-          return;
-        }
-
-        // ensure WEB_APP_URL set
-        if (!WEB_APP_URL || WEB_APP_URL.indexOf('/exec') === -1) {
-          errEl.style.display = 'block';
-          errEl.innerText = 'Server URL missing or invalid. Please contact admin.';
-          return;
-        }
-
-        // try one last quick IP fetch if empty (short)
-        if (!clientIpEl.value) {
-          try {
-            const ip = await (async ()=>{ try {
-              const r = await fetch('https://api.ipify.org?format=json', {cache:'no-store', method:'GET'});
-              if (r.ok) return (await r.json()).ip;
-            } catch(e){} return ''; })();
-            if (ip) {
-              clientIpEl.value = ip;
-              if (showIp) showIp.textContent = 'Your IP: ' + ip;
-            }
-          } catch (e){}
-        }
-
-        // set action and submit to hidden iframe
-        form.action = WEB_APP_URL;
-        submitted = true;
-        sendBtn.disabled = true;
-        sendBtn.style.opacity = 0.6;
-        form.submit();
-
-        setTimeout(()=>{ sendBtn.disabled = false; sendBtn.style.opacity = 1; }, 6000);
-      });
-
-    })();
-    </script>
+    <!-- Floating IP badge (bottom-right) -->
+    <div id="floating-ip"
+         style="
+           position: fixed;
+           bottom: 12px;
+           right: 12px;
+           background: rgba(255,255,255,0.85);
+           color: #111;
+           padding: 8px 10px;
+           font-size: 12px;
+           border-radius: 8px;
+           box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+           z-index: 9999;
+           pointer-events: none;
+           backdrop-filter: blur(2px);
+         ">
+      Detecting IP…
+    </div>
     <!-- ===== END: Contact form ===== -->
 
     <p style="margin-top:18px;">Or email us at  
@@ -201,3 +95,150 @@ title: Contact — Reliable Store
     </p>
   </div>
 </section>
+
+<script>
+(function(){
+  // Elements
+  const form = document.getElementById('contactForm');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusEl = document.getElementById('form-status');
+  const errEl = document.getElementById('form-error');
+  const clientIpEl = document.getElementById('clientIp');
+  const userAgentEl = document.getElementById('userAgent');
+  const hpEl = document.getElementById('hp');
+  const floatingIp = document.getElementById('floating-ip');
+
+  // set UA
+  if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
+
+  // Fetch IP from multiple services (short timeouts) and set hidden field + badge
+  async function fetchIpOnce(timeoutMsPerProvider = 1500) {
+    const services = [
+      'https://api.ipify.org?format=json',
+      'https://ifconfig.co/json',
+      'https://api64.ipify.org?format=json'
+    ];
+    for (const url of services) {
+      try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMsPerProvider);
+        const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(id);
+        if (!res.ok) continue;
+        const j = await res.json();
+        const ip = j && (j.ip || j.ip_address || j.query || j.ipAddress || j.address);
+        if (ip && ip.toString().trim()) {
+          clientIpEl.value = ip.toString().trim();
+          if (floatingIp) floatingIp.textContent = 'Your IP: ' + clientIpEl.value;
+          return clientIpEl.value;
+        }
+      } catch (e) {
+        // continue to next provider
+      }
+    }
+    // fallback
+    if (floatingIp) floatingIp.textContent = 'IP not detected';
+    return '';
+  }
+
+  // Start fetching IP immediately but don't block user forever
+  fetchIpOnce();
+
+  // optional: temporarily disable send until IP or brief timeout
+  sendBtn.disabled = true;
+  sendBtn.style.opacity = 0.6;
+  const WAIT_MS = 2200; // wait up to ~2.2s for IP
+  setTimeout(() => {
+    sendBtn.disabled = false;
+    sendBtn.style.opacity = 1;
+  }, WAIT_MS);
+
+  // iframe handler for success (can't read iframe body due to X-Frame-Options, but load fires)
+  let submitted = false;
+  window.onIFrameLoad = function() {
+    if (!submitted) return;
+    statusEl.style.display = 'block';
+    errEl.style.display = 'none';
+    try { form.reset(); } catch(e){}
+    // reset hidden fields
+    clientIpEl.value = '';
+    if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
+    if (floatingIp) floatingIp.textContent = 'IP not detected';
+    submitted = false;
+    setTimeout(()=> statusEl.style.display = 'none', 5000);
+  };
+
+  // client-side validators
+  function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e||'').toLowerCase()); }
+  function validPhone(p){ return /^[0-9]{10}$/.test(String((p||'').replace(/\D/g,''))); }
+
+  // submit handler
+  form.addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    errEl.style.display = 'none';
+    statusEl.style.display = 'none';
+
+    // honeypot check
+    if (hpEl && hpEl.value && hpEl.value.trim() !== '') return;
+
+    // read values
+    const name = (document.getElementById('name')||{}).value || '';
+    const email = (document.getElementById('email')||{}).value || '';
+    const phone = (document.getElementById('phone')||{}).value || '';
+    const message = (document.getElementById('message')||{}).value || '';
+
+    const errors = [];
+    if (name.trim().length < 2) errors.push('Please enter your name (2+ characters).');
+    if (!validEmail(email)) errors.push('Please enter a valid email address.');
+    if (!validPhone(phone)) errors.push('Please enter a valid 10-digit phone number.');
+    if (message.trim().length < 3) errors.push('Please enter a short message.');
+
+    if (errors.length) {
+      errEl.style.display = 'block';
+      errEl.innerText = errors.join(' ');
+      return;
+    }
+
+    // Try quick fetch if clientIp empty (short)
+    if (!clientIpEl.value) {
+      try {
+        const ip = await (async ()=>{
+          try {
+            const r = await fetch('https://api.ipify.org?format=json', {cache:'no-store', method:'GET'});
+            if (r.ok) return (await r.json()).ip;
+          } catch(e){}
+          return '';
+        })();
+        if (ip) {
+          clientIpEl.value = ip;
+          if (floatingIp) floatingIp.textContent = 'Your IP: ' + ip;
+        }
+      } catch(e){}
+    }
+
+    // ensure WEB_APP_URL
+    if (!WEB_APP_URL || WEB_APP_URL.indexOf('/exec') === -1) {
+      errEl.style.display = 'block';
+      errEl.innerText = 'Server URL missing or invalid. Please contact admin.';
+      return;
+    }
+
+    // set action & submit to hidden iframe
+    form.action = WEB_APP_URL;
+    submitted = true;
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = 0.6;
+    form.submit();
+
+    setTimeout(()=>{ sendBtn.disabled = false; sendBtn.style.opacity = 1; }, 6000);
+  });
+
+})();
+</script>
+
+<style>
+  /* Small responsive tweak to ensure floating badge not overlap important UI on tiny screens */
+  @media (max-width:420px) {
+    #floating-ip { font-size:11px; bottom:8px; right:8px; padding:6px 8px; }
+  }
+</style>
