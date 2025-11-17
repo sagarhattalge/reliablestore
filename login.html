@@ -1,0 +1,96 @@
+---
+layout: default
+title: Login — Reliable Store
+---
+
+<section class="hero-full" style="background:#fff;padding:28px 0;">
+  <div class="hero-inner" style="max-width:900px;margin:0 auto;padding:18px;">
+    <h1>Welcome back</h1>
+    <p style="color:var(--muted)">Sign in to access your account and orders.</p>
+  </div>
+</section>
+
+<section class="full-bleed">
+  <div class="full-bleed-inner" style="max-width:720px;margin:0 auto;padding:24px;">
+    <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.04)">
+      <form id="loginForm" autocomplete="on" novalidate>
+        <label>
+          Email<br/>
+          <input id="li_email" name="email" type="email" required placeholder="name@example.com"
+                 style="width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:8px"/>
+        </label>
+
+        <label style="margin-top:12px">
+          Password<br/>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="li_password" name="password" type="password" required placeholder="Your password"
+                   style="flex:1;padding:10px;border:1px solid #e6e9ef;border-radius:8px"/>
+            <button id="li_toggle" type="button" style="background:transparent;border:0;cursor:pointer;color:var(--brand)">Show</button>
+          </div>
+        </label>
+
+        <label style="margin-top:12px;font-size:14px">
+          <input id="li_rem" type="checkbox" style="margin-right:8px"/> Remember me (browser)
+        </label>
+
+        <div id="li_msg" style="margin-top:12px;color:#b00020;display:none"></div>
+
+        <button id="li_submit" type="submit" class="btn" style="margin-top:14px">Sign in</button>
+
+        <p style="margin-top:12px;color:var(--muted)">Don't have an account? <a href="/signup.html" style="color:var(--brand)">Create one</a></p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<script>
+/*
+  Demo login (browser-only). Matches the sign-up demo storage format.
+  - Verifies email exists and password matches the localStorage stored token.
+*/
+(function(){
+  const form = document.getElementById('loginForm');
+  const emailEl = document.getElementById('li_email');
+  const pwEl = document.getElementById('li_password');
+  const toggle = document.getElementById('li_toggle');
+  const msgEl = document.getElementById('li_msg');
+  const remEl = document.getElementById('li_rem');
+
+  toggle.addEventListener('click', ()=> {
+    if (pwEl.type === 'password'){ pwEl.type = 'text'; toggle.textContent = 'Hide'; }
+    else { pwEl.type = 'password'; toggle.textContent = 'Show'; }
+  });
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    msgEl.style.display = 'none'; msgEl.textContent = '';
+
+    const email = (emailEl.value || '').trim();
+    const password = pwEl.value;
+
+    if (!email) { msgEl.style.display='block'; msgEl.innerText='Enter email'; return; }
+    if (!password) { msgEl.style.display='block'; msgEl.innerText='Enter password'; return; }
+
+    const users = JSON.parse(localStorage.getItem('rs_users')||'{}');
+    const record = users[email];
+    if (!record) { msgEl.style.display='block'; msgEl.innerText='No account found with this email.'; return; }
+
+    // demo token compare (b64)
+    if (record.pw_token !== btoa(password)) {
+      msgEl.style.display='block'; msgEl.innerText='Incorrect password.';
+      return;
+    }
+
+    // set session
+    const session = { email: record.email||email, name: record.name || '' };
+    localStorage.setItem('rs_user_session', JSON.stringify(session));
+    if (remEl.checked) {
+      // keep a flag for persistent demo-session
+      localStorage.setItem('rs_remember', '1');
+    }
+
+    msgEl.style.display='block'; msgEl.style.color='green'; msgEl.innerText='Signed in (demo). Redirecting...';
+    setTimeout(()=> { window.location.href = '/'; }, 700);
+  });
+})();
+</script>
