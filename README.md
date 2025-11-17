@@ -16,5 +16,4 @@ Replace the placeholder links in `assets/js/cart.js` where it says:
 with real payment links you create in your payment provider's dashboard.
 
  rebuild
-final contact form
- 
+reverted contact form
