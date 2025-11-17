@@ -1,459 +1,237 @@
-/* Global */
+/* ============================
+   ReliableStore — Optimized CSS
+   Brand color: --brand: #FE9900
+   Notes: Single-file, de-duplicated, responsive-friendly
+   ============================ */
+
+/* ---------- Root variables ---------- */
 :root{
-  --brand:#ff8c00;
-  --dark:#0f1720;
-  --muted:#6b7280;
-  --maxw:1180px;
+  --brand: #FE9900;       /* primary brand color */
+  --brand-600: #d97f00;   /* hover/darker */
+  --dark: #0f1720;
+  --muted: #6b7280;
+  --bg: #f6f8fb;
+  --text: #111;
+  --maxw: 1180px;
+  --wide-max: 1600px;
+  --radius: 8px;
+  --shadow-soft: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-strong: 0 6px 18px rgba(0,0,0,0.12);
+  --transition: 180ms ease;
+  --ui-font: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-*{box-sizing:border-box;}
-
-body{
-  margin:0;
-  font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
-  background:#f6f8fb;
-  color:#111;
+/* ---------- Base / Reset ---------- */
+* { box-sizing: border-box; }
+html,body { height:100%; }
+body {
+  margin: 0;
+  font-family: var(--ui-font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.wrap{
-  max-width:var(--maxw);
-  margin:0 auto;
-  padding:0 18px;
+/* Utility container */
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 18px;
 }
 
-.logo{height:36px;}
-.logo-sm{height:34px;}
+/* Images */
+img { max-width:100%; height:auto; display:block; }
 
-/* Header */
-.site-topbar{
-  background:var(--dark);
-  color:#fff;
-  padding:12px 0;
-  position:relative;
-  z-index:9999;
+/* Logo sizes */
+.logo { height:36px; display:block; }
+.logo-sm { height:34px; display:block; }
+
+/* Links / Buttons (brand rules) */
+a, a:visited { color: var(--brand); text-decoration: none; transition: color var(--transition); }
+a:hover, a:focus { color: var(--brand-600); }
+
+button, .btn, .btn-primary {
+  display:inline-block;
+  padding: 8px 12px;
+  background: var(--brand);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition), transform 120ms ease;
+}
+button:hover, .btn:hover { background: var(--brand-600); }
+button:disabled, .btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Basic typography */
+h1, h2, h3, h4 { margin:0 0 12px 0; font-weight:600; color:var(--text); }
+p { margin: 0 0 12px; color: var(--muted); }
+
+/* ---------- Header / Topbar ---------- */
+.site-topbar {
+  background: var(--dark);
+  color: #fff;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 99999;
+  transition: transform .2s ease, box-shadow .24s ease;
 }
 
-.site-topbar .wrap{
+/* small variation when scrolled (add/remove class .scrolled from JS) */
+.site-topbar.scrolled { box-shadow: var(--shadow-strong); }
+
+.site-topbar .wrap {
   display:flex;
   align-items:center;
   gap:18px;
+  max-width: var(--wide-max);
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
-.site-nav{
+/* Nav */
+.site-nav {
   display:flex;
   gap:14px;
   margin-left:12px;
+  align-items:center;
+  overflow:visible;
 }
-
-.site-nav a{
-  color:#d2dae6;
+.site-nav a {
+  color: #d2dae6;
   font-size:14px;
-  text-decoration:none;
+  padding:6px 6px;
+  display:inline-block;
 }
+.site-nav a:hover { color:var(--brand); }
 
-.header-actions{
+/* Header right actions */
+.header-actions {
   margin-left:auto;
   display:flex;
   gap:12px;
   align-items:center;
 }
-
-.header-actions .cart{
-  background:#0ea5e9;
-  padding:6px 10px;
-  border-radius:6px;
-  color:#fff;
-  text-decoration:none;
+.header-actions .cart {
+  background: #0ea5e9;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #fff;
+  text-decoration: none;
 }
 
-/* Hero Section */
-.hero-full{
+/* ---------- Hero / Full width bands ---------- */
+.hero-full {
   width:100%;
   background-size:cover;
   background-position:center;
-  min-height:240px;
+  min-height: 280px;
   display:flex;
   align-items:center;
   position:relative;
-  z-index:1; /* hero is below header */
 }
-
-.hero-overlay{
+.hero-overlay {
   position:absolute;
   inset:0;
-  background:rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.55);
   z-index:1;
 }
-
-.hero-inner{
-  max-width:var(--maxw);
+.hero-inner {
+  max-width: var(--maxw);
   margin:0 auto;
-  padding:56px 18px;
-  text-align:center;
-  position:relative;
+  padding: 56px 18px;
+  text-align: center;
   z-index:2;
 }
+.hero-inner h1 { font-size: 46px; margin:0 0 8px; }
+.hero-inner p { color: var(--muted); max-width:900px; margin:8px auto 0; font-size:18px; }
 
-.hero-inner h1{
-  font-size:40px;
-  margin:0;
+/* ---------- Features grid ---------- */
+.features-wrap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+  gap: 28px;
+  padding: 40px 24px;
+}
+.feature {
+  background: #fff;
+  padding: 22px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+  min-height: 150px;
 }
 
-.hero-inner p{
-  color:var(--muted);
-  max-width:900px;
-  margin:8px auto 0;
+/* ---------- Full-bleed content helpers ---------- */
+.full-bleed,
+.features-band,
+.site-footer { width:100%; margin:0; padding:0; }
+.hero-inner,
+.features-wrap,
+.site-footer .wrap,
+.full-bleed-inner { max-width: var(--wide-max); margin:0 auto; padding: 32px 24px; }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  background: var(--dark);
+  color: #d1d5db;
+  padding: 50px 0;
+}
+.site-footer .wrap { display:flex; gap:28px; justify-content: space-between; flex-wrap:wrap; }
+.site-footer a { color: #c7ceda; text-decoration: none; display:block; margin-bottom:8px; }
+.site-footer .wrap > div { flex:1; min-width: 180px; }
+
+/* ---------- Sticky header shadow tweak for different screen heights ---------- */
+@media (max-height:540px) {
+  .hero-overlay { background: rgba(255,255,255,0.45); }
 }
 
-/* Footer */
-.site-footer{
-  background:var(--dark);
-  color:#d1d5db;
-  padding:36px 0;
-  position:relative;
-  z-index:9999;
-}
+/* ---------- Responsive / Mobile ---------- */
 
-.site-footer .wrap{
-  display:flex;
-  gap:28px;
-}
-
-.site-footer a{
-  display:block;
-  color:#c7ceda;
-  margin-bottom:8px;
-  text-decoration:none;
-}
-
-/* Responsive */
-@media(max-width:1000px){
-  .features-wrap{
-    grid-template-columns:repeat(2,1fr);
-  }
-}
-
-@media(max-width:620px){
-  .site-topbar .wrap{
-    flex-direction:column;
-    align-items:flex-start;
-  }
-}
-/* --- Mobile fixes (patch) --- */
-
-/* Ensure header stacks cleanly and nav scrolls when too many links */
-@media (max-width: 760px) {
+/* Small phones / mobile-friendly nav */
+@media (max-width:760px) {
   .site-topbar .wrap {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
     padding: 10px 12px;
   }
-
-  /* make nav horizontally scrollable instead of wrapping awkwardly */
   .site-nav {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 6px;
-    margin-left: 0;
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:6px;
+    margin-left:0;
   }
-  .site-nav a {
-    white-space: nowrap;
-    padding: 6px 8px;
-    font-size: 14px;
-    display: inline-block;
-  }
+  .site-nav a { white-space:nowrap; padding:6px 8px; font-size:14px; display:inline-block; }
+  .header-actions { margin-left:0; justify-content:flex-start; gap:8px; padding-top:6px; }
 
-  /* header actions (cart/login) move below nav and align left */
-  .header-actions {
-    margin-left: 0;
-    justify-content: flex-start;
-    gap: 8px;
-    padding-top: 6px;
-  }
+  .hero-inner { padding: 24px 12px; text-align:left; }
+  .hero-inner h1 { font-size: 22px; line-height:1.15; margin-bottom:8px; }
+  .hero-inner p { font-size:14px; margin-top:8px; }
 
-  /* reduce hero padding and font sizes for narrow screens */
-  .hero-inner {
-    padding: 24px 12px;
-    text-align: left;
-  }
-  .hero-inner h1 {
-    font-size: 22px;
-    line-height: 1.15;
-  }
-  .hero-inner p {
-    font-size: 14px;
-    line-height: 1.5;
-    margin-top: 8px;
-  }
-
-  /* hide large decorative right-hand images inside hero */
-  .hero-deco, .hero-right {
-    display: none !important;
-  }
-
-  /* features should stack vertically for best mobile UX */
-  .features-wrap {
-    grid-template-columns: 1fr !important;
-    gap: 12px;
-    padding: 18px 12px;
-  }
-
-  /* reduce footer paddings and stack columns */
-  .site-footer .wrap {
-    flex-direction: column;
-    gap: 18px;
-  }
+  .features-wrap { grid-template-columns: 1fr; gap:12px; padding: 18px 12px; }
+  .site-footer .wrap { flex-direction: column; gap: 18px; }
+  .mobile-bottom-nav { display:block; }
 }
 
-/* small tweak for slightly larger phones / tablets */
-@media (min-width: 761px) and (max-width: 1000px) {
+/* Tablet / small-laptop */
+@media (min-width:761px) and (max-width:1000px) {
   .hero-inner h1 { font-size: 28px; }
   .hero-inner { padding: 32px 18px; }
-  .features-wrap { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .features-wrap { grid-template-columns: repeat(2,1fr); gap: 16px; }
 }
 
-/* ensure images scale nicely */
-img { max-width: 100%; height: auto; display: block; }
-
-/* avoid the hero overlay covering header on very short screens */
-@media (max-height: 540px) {
-  .hero-overlay { background: rgba(255,255,255,0.45); }
-}
-/* ================================
-   FULL-BLEED LAYOUT (OPTION B)
-   Makes hero, bands, features, and footer stretch edge-to-edge
-   Keeps inner content neatly centered with large max-width
-   ================================ */
-
-/* Full-width outer wrappers */
-.hero-full,
-.features-band,
-.site-footer,
-.full-bleed {
-  width: 100%;
-  margin: 0;
-  padding: 0;
+/* Slightly larger mobile/tablet adjustments */
+@media (max-width:1000px) {
+  .features-wrap { grid-template-columns: repeat(2,1fr); }
 }
 
-/* Inner containers for readable content */
-.hero-inner,
-.features-wrap,
-.site-footer .wrap,
-.full-bleed-inner {
-  max-width: 1600px;            /* adjust up to 1800px if you want bigger */
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
-/* Hero adjustments */
-.hero-full {
-  background-size: cover;
-  background-position: center;
-  min-height: 280px;
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-.hero-inner h1 {
-  font-size: 46px;
-  margin-bottom: 12px;
-}
-
-.hero-inner p {
-  font-size: 18px;
-  max-width: 900px;
-}
-
-/* Features grid — expands fully */
-.features-wrap {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 28px;
-  padding: 40px 24px;
-}
-
-/* Make feature cards nicer on large screens */
-.feature {
-  background: white;
-  padding: 22px;
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  min-height: 150px;
-}
-
-/* Footer becomes full-bleed with centered columns */
-.site-footer {
-  padding: 50px 0;
-  background: #0f1720 !important;
-  color: #d1d5db;
-}
-
-.site-footer .wrap {
-  display: flex;
-  justify-content: space-between;
-  gap: 40px;
-  flex-wrap: wrap;
-}
-
-/* Footer columns spacing */
-.site-footer .wrap > div {
-  flex: 1;
-  min-width: 180px;
-}
-
-/* Make topbar (header) full-width too */
-.site-topbar {
-  width: 100%;
-  margin: 0;
-  left: 0;
-  right: 0;
-  padding: 14px 0;
-}
-
-/* Ensure nav also expands full page */
-.site-topbar .wrap {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-/* ================================
-   Responsive for smaller screens
-   ================================ */
-@media (max-width: 768px) {
-
-  .hero-inner {
-    padding: 36px 18px;
-    text-align: left;
-  }
-
-  .hero-inner h1 {
-    font-size: 28px;
-    line-height: 1.2;
-  }
-
-  .hero-inner p {
-    font-size: 14px;
-    max-width: 100%;
-  }
-
-  .features-wrap {
-    grid-template-columns: 1fr;
-    gap: 18px;
-    padding: 24px 14px;
-  }
-
-  .site-footer .wrap {
-    flex-direction: column;
-    gap: 22px;
-  }
-}
-
-/* Ensure images scale nicely */
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-/* Sticky header */
-.site-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 99999;
-  transition: transform 200ms ease, box-shadow 240ms ease;
-}
-
-/* when scrolled, give subtle shadow */
-.site-topbar.scrolled {
-  box-shadow: 0 6px 18px rgba(2,6,23,0.08);
-}
-
-/* Mobile bottom nav */
-.mobile-bottom-nav {
-  display: none;
-  position: fixed;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #111827;
-  color: #fff;
-  border-radius: 999px;
-  padding: 8px 12px;
-  z-index: 99999;
-  box-shadow: 0 12px 30px rgba(2,6,23,0.12);
-}
-
-.mobile-bottom-nav a { color: #fff; text-decoration:none; margin:0 8px; display:inline-block; font-size:14px; }
-
-/* show bottom nav on small screens */
-@media (max-width: 760px) {
-  .mobile-bottom-nav { display: block; }
-}
-/* FULL BLEED SECTIONS */
-.hero-full,
-.features-band,
-.site-footer,
-.full-bleed {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.hero-inner,
-.features-wrap,
-.site-footer .wrap,
-.full-bleed-inner {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
-/* FEATURE GRID */
-.features-wrap {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 28px;
-  padding: 40px 24px;
-}
-
-.feature {
-  background: white;
-  padding: 22px;
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  min-height: 150px;
-}
-
-/* FOOTER */
-.site-footer {
-  padding: 50px 0;
-  background: #0f1720 !important;
-  color: #d1d5db;
-}
-
-.site-footer .wrap {
-  display: flex;
-  justify-content: space-between;
-  gap: 40px;
-  flex-wrap: wrap;
-}
-
-/* STICKY HEADER */
-.site-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 99999;
-  transition: box-shadow .2s ease;
-}
-.site-topbar.scrolled {
-  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
-}
-
-/* MOBILE BOTTOM NAV */
+/* ---------- Mobile bottom nav ---------- */
 .mobile-bottom-nav {
   display: none;
   position: fixed;
@@ -465,67 +243,25 @@ img {
   border-radius: 999px;
   padding: 10px 18px;
   z-index: 99999;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+}
+.mobile-bottom-nav a { color: #fff; text-decoration:none; margin:0 10px; font-size:14px; }
+@media (max-width:760px) { .mobile-bottom-nav { display:block; } }
+
+/* ---------- Utility helpers ---------- */
+.center { text-align:center; }
+.kicker { color:var(--muted); font-size:13px; }
+.card { background:#fff; padding:14px; border-radius:12px; box-shadow:var(--shadow-soft); }
+
+/* Accessibility focus styles (theming) */
+a:focus, button:focus, input:focus, textarea:focus {
+  outline: 3px solid rgba(254,153,0,0.18);
+  outline-offset: 3px;
 }
 
-.mobile-bottom-nav a {
-  color: #fff;
-  text-decoration: none;
-  margin: 0 10px;
-  font-size: 14px;
-}
-
-@media (max-width: 760px) {
-  .mobile-bottom-nav { display: block; }
-  .features-wrap { grid-template-columns: 1fr; }
-  .site-footer .wrap { flex-direction: column; gap: 20px; }
-}
-
-/* IMAGE FIX */
-img { max-width: 100%; display: block; height: auto; }
-
-/* ===========================================
-   GLOBAL BRAND COLOR — RELIABLE STORE (#FE9900)
-   Applies to links, navigation, buttons, etc.
-   =========================================== */
-
-/* Make all text links use brand color */
-a,
-a:visited,
-.nav-link,
-.navbar a {
-  color: #FE9900 !important;
-}
-
-/* Hover state — slightly darker shade */
-a:hover,
-.nav-link:hover,
-.navbar a:hover {
-  color: #d97f00 !important;
-}
-
-/* Primary buttons use brand color */
-.btn-primary,
-button.btn-primary,
-input[type="submit"].btn-primary {
-  background-color: #FE9900 !important;
-  border-color: #FE9900 !important;
-  color: #fff !important;
-}
-
-/* Primary button hover */
-.btn-primary:hover,
-button.btn-primary:hover,
-input[type="submit"].btn-primary:hover {
-  background-color: #d97f00 !important;
-  border-color: #d97f00 !important;
-  color: #fff !important;
-}
-
-/* Ensure focus outlines (for accessibility) match theme */
-a:focus,
-button:focus,
-.btn-primary:focus {
-  outline: 2px solid #FE9900 !important;
-  outline-offset: 2px;
-}
+/* ---------- Performance & specificity guidance ----------
+   - Avoid very deep selectors; prefer class names (already followed).
+   - Keep heavy shadows/transforms limited to interactive states.
+   - Use variables to tweak theme quickly.
+   - Deduped duplicated sections and consolidated hero/footer full-bleed rules.
+   ----------------------------------------------------------- */
