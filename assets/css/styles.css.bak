@@ -1,370 +1,110 @@
-/* =========================================
-   RELIABLESTORE GLOBAL THEME
-   ========================================= */
+/* ======================
+   ReliableStore - main CSS
+   Clean / optimized
+   Brand: #FE9900
+   ====================== */
+
 :root{
-  --brand:#FE9900;          /* Primary site color */
-  --brand-dark:#d97f00;     /* Hover shade */
-  --bg:#f6fbff;
-  --card:#ffffff;
-  --text:#111;
+  --brand:#FE9900;
+  --brand-dark:#d97f00;
+  --dark:#0f1720;
   --muted:#6b7280;
-  --shadow:0 4px 12px rgba(0,0,0,.06);
+  --maxw:1180px;
+  --page-bg:#f6f8fb;
 }
 
-/* Reset / Base */
-*{box-sizing:border-box;margin:0;padding:0}
+/* reset */
+*{box-sizing:border-box}
+html,body{height:100%}
 body{
-  font-family:Inter, system-ui, Arial, sans-serif;
-  background:var(--bg);
-  color:var(--text);
   margin:0;
+  font-family:Inter,system-ui,Segoe UI,Roboto,Arial, sans-serif;
+  background:var(--page-bg);
+  color:#111;
+  -webkit-font-smoothing:antialiased;
 }
-img{max-width:100%;display:block}
 
-/* =========================================
-   HEADER
-   ========================================= */
-.site-topbar,
-.site-header{
-  width:100%;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:16px 24px;
-  background:#ffffff;
-  border-bottom:1px solid #ececec;
+/* container helper */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 18px;}
+
+/* Header */
+.site-topbar{
+  background:var(--dark);
+  color:#fff;
+  padding:12px 0;
   position:sticky;
   top:0;
   z-index:9999;
+  transition:box-shadow .18s ease;
 }
+.site-topbar.scrolled{box-shadow:0 6px 18px rgba(0,0,0,0.16)}
+.topbar-inner{display:flex;align-items:center;gap:18px}
+.logo{height:36px}
+.site-nav{display:flex;gap:18px;margin-left:12px}
+.site-nav a{color:#d2dae6;text-decoration:none;font-size:14px}
+.header-actions{margin-left:auto;display:flex;gap:12px;align-items:center}
+.header-actions .cart{background:#111827;padding:6px 10px;border-radius:6px;color:#fff;text-decoration:none;border:2px solid rgba(255,255,255,0.03)}
+.btn-link{color:var(--brand);text-decoration:none}
+.login-link{color:var(--brand);}
 
-.logo{
-  height:36px;
-  display:block;
-}
-
-.site-nav{
-  display:flex;
-  gap:18px;
-  align-items:center;
-}
-
-.site-nav a{
-  text-decoration:none;
-  font-size:15px;
-  color:var(--brand);
-  font-weight:600;
-}
-.site-nav a:hover{
-  color:var(--brand-dark);
-}
-
-.header-actions{
-  display:flex;
-  gap:14px;
-  align-items:center;
-}
-
-.header-actions .btn-link{
-  font-size:14px;
-  color:var(--brand);
-  text-decoration:none;
-  font-weight:600;
-}
-.header-actions .btn-link:hover{
-  color:var(--brand-dark);
-}
-
-.cart{
-  background:var(--brand);
-  color:#fff;
-  padding:6px 12px;
-  border-radius:8px;
-  font-size:14px;
-  font-weight:600;
-  text-decoration:none;
-}
-
-/* Highlight cart count */
-#cart-count{
-  background:#fff;
-  color:var(--brand);
-  padding:2px 6px;
-  margin-left:4px;
-  border-radius:6px;
-  font-weight:700;
-}
-
-/* =========================================
-   BUTTONS
-   ========================================= */
-.btn{
-  display:inline-block;
-  padding:10px 14px;
-  border-radius:10px;
-  border:0;
-  cursor:pointer;
-  text-decoration:none;
-  font-size:14px;
-  transition:0.2s ease;
-}
-
-.btn.primary{
-  background:var(--brand);
-  color:#fff;
-}
-.btn.primary:hover{
-  background:var(--brand-dark);
-}
-
-/* =========================================
-   PRODUCT GRID
-   ========================================= */
-.container{
-  display:grid;
-  grid-template-columns:1fr 320px;
-  gap:24px;
-  padding:28px;
-}
-
-.products-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-  gap:20px;
-}
-
-.product{
-  background:var(--card);
-  padding:16px;
-  border-radius:12px;
-  box-shadow:var(--shadow);
-  text-align:center;
-  transition:0.25s ease;
-}
-.product:hover{
-  transform:translateY(-4px);
-  box-shadow:0 6px 16px rgba(0,0,0,0.1);
-}
-
-.product-image{
-  width:100%;
-  height:160px;
-  object-fit:cover;
-  border-radius:8px;
-  background:#fff;
-}
-
-.product-title{
-  font-size:16px;
-  margin:12px 0 6px;
-  font-weight:600;
-}
-
-.price{
-  font-weight:700;
-  color:var(--brand);
-  font-size:18px;
-}
-
-/* =========================================
-   CART PANEL
-   ========================================= */
-.cart-panel{
-  background:var(--card);
-  padding:18px;
-  border-radius:12px;
-  position:sticky;
-  top:20px;
-  align-self:start;
-  box-shadow:var(--shadow);
-}
-
-#cart-items{
-  list-style:none;
-  margin:0 0 16px 0;
-  padding:0;
-}
-
-#cart-items li{
-  display:flex;
-  justify-content:space-between;
-  padding:8px 0;
-  border-bottom:1px dashed #eee;
-}
-
-.cart-total{
-  font-weight:700;
-  margin-bottom:14px;
-}
-
-/* =========================================
-   HERO SECTIONS
-   ========================================= */
+/* Hero */
 .hero-full{
   width:100%;
   background-size:cover;
   background-position:center;
+  min-height:260px;
   display:flex;
   align-items:center;
-  min-height:260px;
   position:relative;
 }
+.hero-overlay{position:absolute;inset:0;background:rgba(255,255,255,0.55);z-index:1}
+.hero-inner{max-width:var(--maxw);margin:0 auto;padding:56px 18px;text-align:center;position:relative;z-index:2}
+.hero-inner h1{font-size:40px;margin:0}
+.hero-inner p{color:var(--muted);max-width:900px;margin:8px auto 0}
 
-.hero-inner{
-  max-width:1180px;
-  margin:0 auto;
-  padding:38px 24px;
-  position:relative;
-  z-index:2;
-  text-align:center;
+/* Buttons */
+.btn{display:inline-block;padding:8px 12px;border-radius:6px;border:0;background:#eee;color:#111;text-decoration:none}
+.btn-primary{background:var(--brand);color:#fff;border:0}
+.w-100{width:100%}
+
+/* full-bleed sections */
+.full-bleed, .features-band, .site-footer {width:100%;margin:0;padding:0}
+.full-bleed-inner, .features-wrap, .site-footer .wrap {max-width:1600px;margin:0 auto;padding:32px 24px}
+
+/* features grid */
+.features-wrap{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  gap:28px;
+  padding:40px 24px;
 }
-
-.hero-inner h1{
-  font-size:40px;
-  margin-bottom:10px;
-}
-
-.hero-inner p{
-  font-size:17px;
-  max-width:900px;
-  margin:0 auto;
-  color:var(--muted);
-}
-
-.hero-overlay{
-  position:absolute;
-  inset:0;
-  background:rgba(255,255,255,0.55);
+.feature{
+  background:#fff;padding:22px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);min-height:150px;text-align:center;
 }
 
-/* =========================================
-   FULL-BLEED SECTIONS
-   ========================================= */
-.full-bleed{
-  width:100%;
-}
-.full-bleed-inner{
-  max-width:1180px;
-  margin:0 auto;
-  padding:32px 24px;
-}
+/* featured product visuals (cards) */
+.feature img{max-width:100%;height:160px;object-fit:contain;margin-bottom:12px}
+.feature h3{font-size:16px;margin:6px 0 8px}
+.feature p{margin:0 0 12px;font-weight:700}
 
-/* =========================================
-   FOOTER
-   ========================================= */
-.site-footer{
-  background:#0f1720;
-  color:#d1d5db;
-  padding:40px 0;
-}
-.site-footer .wrap{
-  max-width:1180px;
-  margin:0 auto;
-  padding:0 24px;
-  display:flex;
-  flex-wrap:wrap;
-  gap:32px;
-}
-.site-footer a{
-  color:#d1d5db;
-  text-decoration:none;
-  margin-bottom:8px;
-  display:block;
-}
-.site-footer a:hover{
-  color:var(--brand);
-}
+/* footer */
+.site-footer{background:var(--dark);color:#d1d5db;padding:50px 0}
+.site-footer .wrap{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap}
+.site-footer a{display:block;color:#c7ceda;margin-bottom:8px;text-decoration:none}
 
-/* =========================================
-   RESPONSIVE
-   ========================================= */
-@media (max-width:900px){
-  .container{
-    grid-template-columns:1fr;
-    padding:20px;
-  }
-  .cart-panel{
-    position:relative;
-    top:auto;
-    margin-top:20px;
-  }
+/* small screens */
+@media (max-width:1000px){
+  .features-wrap{grid-template-columns:repeat(2,1fr)}
+  .hero-inner h1{font-size:32px}
 }
-
 @media (max-width:760px){
-  .site-nav{
-    overflow-x:auto;
-    gap:12px;
-  }
-  .hero-inner h1{
-    font-size:28px;
-  }
-  .hero-inner p{
-    font-size:14px;
-  }
+  .topbar-inner{flex-direction:column;align-items:stretch}
+  .site-nav{overflow-x:auto;white-space:nowrap;padding-bottom:6px;margin-left:0}
+  .features-wrap{grid-template-columns:1fr;padding:24px 12px}
+  .hero-inner{padding:24px 12px;text-align:left}
+  .hero-inner h1{font-size:22px}
+  .header-actions{justify-content:flex-start}
 }
 
-/* ---------------------------
-   Fix: Hero background scale + logo sizing
-   Add this to end of assets/css/styles.css
-   --------------------------- */
-
-/* Ensure hero background always covers without stretching */
-.hero-full {
-  background-repeat: no-repeat !important;
-  background-size: cover !important;        /* cover preserves aspect ratio */
-  background-position: center center !important;
-  min-height: 260px;                        /* keep a stable hero height */
-  display: flex;
-  align-items: center;
-}
-
-/* Restrict any right/decoration image inside hero (if used as <img>) */
-.hero-full img,
-.hero-deco img,
-.hero-right img {
-  max-width: 100%;
-  height: auto !important;
-  object-fit: contain !important;
-  display: block;
-}
-
-/* Logo sizing (keeps header logo tidy) */
-.site-topbar .logo,
-.site-header .logo {
-  height: 44px;     /* set desired header logo height */
-  width: auto;
-  max-width: 220px; /* prevents very wide logos */
-  display: block;
-}
-
-/* Make sure hero-inner doesn't shrink horizontally */
-.hero-inner {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 38px 20px;
-}
-
-/* Small tweak so hero text area and category band don't overlap */
-.full-bleed-inner, .hero-inner {
-  box-sizing: border-box;
-}
-
-/* ---------------------------
-   Temporary quick-hide for duplicated small nav under hero
-   (useful while you confirm the HTML change)
-   --------------------------- */
-
-/* Hide the small repeated category row that appears directly after hero */
-.hero-full + .full-bleed .full-bleed-inner > .category-row,
-.hero-full + .full-bleed .full-bleed-inner .category-links,
-.hero-full + .full-bleed .full-bleed-inner nav.small-nav {
-  display: none !important;
-}
-
-/* If you prefer to show it but make it subtle (instead of hiding), use:
-.hero-full + .full-bleed .full-bleed-inner .category-links {
-  opacity: 0.6;
-  color: var(--muted);
-  font-size: 14px;
-}
-*/
+/* Accessibility focus */
+a:focus, button:focus, input:focus {outline:2px solid var(--brand);outline-offset:2px}
