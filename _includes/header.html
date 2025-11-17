@@ -1,82 +1,23 @@
-<header class="site-topbar" role="banner" aria-label="Site header">
-  <div class="wrap site-topbar-inner">
-    <!-- Logo -->
-    <a href="/" class="brand" aria-label="ReliableStore — Home">
-      <img src="/assets/icons/Header%20Logo.png"
-           alt="ReliableStore"
-           class="logo"
-           width="160" height="36"
-           loading="eager">
+<header class="site-topbar" role="banner">
+  <div class="wrap header-row">
+    <!-- left: logo -->
+    <a href="/" class="brand" aria-label="ReliableStore home">
+      <img src="/assets/icons/header-logo.png" alt="Reliable Store" class="logo">
     </a>
 
-    <!-- Mobile nav toggle -->
-    <button id="rs-nav-toggle" class="rs-nav-toggle" aria-controls="rs-main-nav" aria-expanded="false"
-            aria-label="Toggle navigation">
-      <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true" focusable="false">
-        <rect width="20" height="2" y="0"></rect>
-        <rect width="20" height="2" y="6"></rect>
-        <rect width="20" height="2" y="12"></rect>
-      </svg>
-    </button>
-
-    <!-- Main nav -->
-    <nav id="rs-main-nav" class="site-nav" aria-label="Main navigation">
-      <ul class="site-nav-list">
-        <li><a href="/" class="nav-link">Home</a></li>
-        <li><a href="/all-products.html" class="nav-link">All Products</a></li>
-        <li><a href="/category.html" class="nav-link">Grocery &amp; Gourmet Foods</a></li>
-        <li><a href="/contact.html" class="nav-link">Contact</a></li>
-        <li><a href="/about.html" class="nav-link">About</a></li>
-      </ul>
+    <!-- center nav -->
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="/">Home</a>
+      <a href="/all-products.html">All Products</a>
+      <a href="/category.html">Grocery &amp; Gourmet Foods</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/about.html">About</a>
     </nav>
 
-    <!-- Header actions -->
-    <div class="header-actions" role="region" aria-label="Header actions">
-      <a href="/login.html" class="nav-link header-login">Login</a>
-      <a href="/signup.html" class="btn header-signup">Sign up</a>
-      <a href="/cart.html" class="cart" aria-label="View cart">
-        <span class="cart-emoji" aria-hidden="true">🛒</span>
-        <span id="cart-count" aria-live="polite" class="cart-count">0</span>
-      </a>
+    <!-- right actions -->
+    <div class="header-actions">
+      <a href="/account.html" class="btn-link">Login / Sign Up</a>
+      <a href="/cart.html" class="cart">Cart <span id="cart-count">0</span></a>
     </div>
   </div>
-
-  <!-- Minimal JS: toggle mobile nav & add .scrolled class on scroll -->
-  <script>
-  (function(){
-    const toggle = document.getElementById('rs-nav-toggle');
-    const nav = document.getElementById('rs-main-nav');
-    const topbar = document.querySelector('.site-topbar');
-
-    // helper: toggle nav visibility on small screens
-    function updateToggleVisibility(){
-      const isSmall = window.matchMedia('(max-width:760px)').matches;
-      toggle.style.display = isSmall ? 'inline-flex' : 'none';
-      if (!isSmall) {
-        nav.style.display = 'flex';
-        toggle.setAttribute('aria-expanded','false');
-      } else {
-        // hide nav initially on small screens (but preserve if user opened)
-        if (toggle.getAttribute('aria-expanded') === 'true') nav.style.display = 'block';
-        else nav.style.display = 'none';
-      }
-    }
-    updateToggleVisibility();
-    window.addEventListener('resize', updateToggleVisibility, {passive:true});
-
-    if (toggle && nav) {
-      toggle.addEventListener('click', function(){
-        const expanded = this.getAttribute('aria-expanded') === 'true';
-        this.setAttribute('aria-expanded', String(!expanded));
-        if (!expanded) nav.style.display = 'block'; else nav.style.display = 'none';
-      }, {passive:true});
-    }
-
-    // add .scrolled when user scrolls
-    window.addEventListener('scroll', function(){
-      if ((window.scrollY || window.pageYOffset) > 10) topbar.classList.add('scrolled');
-      else topbar.classList.remove('scrolled');
-    }, {passive:true});
-  })();
-  </script>
 </header>
