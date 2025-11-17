@@ -483,3 +483,49 @@ img {
 
 /* IMAGE FIX */
 img { max-width: 100%; display: block; height: auto; }
+
+/* ===========================================
+   GLOBAL BRAND COLOR — RELIABLE STORE (#FE9900)
+   Applies to links, navigation, buttons, etc.
+   =========================================== */
+
+/* Make all text links use brand color */
+a,
+a:visited,
+.nav-link,
+.navbar a {
+  color: #FE9900 !important;
+}
+
+/* Hover state — slightly darker shade */
+a:hover,
+.nav-link:hover,
+.navbar a:hover {
+  color: #d97f00 !important;
+}
+
+/* Primary buttons use brand color */
+.btn-primary,
+button.btn-primary,
+input[type="submit"].btn-primary {
+  background-color: #FE9900 !important;
+  border-color: #FE9900 !important;
+  color: #fff !important;
+}
+
+/* Primary button hover */
+.btn-primary:hover,
+button.btn-primary:hover,
+input[type="submit"].btn-primary:hover {
+  background-color: #d97f00 !important;
+  border-color: #d97f00 !important;
+  color: #fff !important;
+}
+
+/* Ensure focus outlines (for accessibility) match theme */
+a:focus,
+button:focus,
+.btn-primary:focus {
+  outline: 2px solid #FE9900 !important;
+  outline-offset: 2px;
+}
