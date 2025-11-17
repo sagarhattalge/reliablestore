@@ -14,9 +14,9 @@ title: Contact — Reliable Store
   <div class="full-bleed-inner" style="padding:20px; max-width:900px;margin:0 auto;">
     <h2>Send us a message</h2>
 
-    <!-- ===== START: Contact form (visible floating IP badge) ===== -->
+    <!-- ===== START: Contact form (complete) ===== -->
     <script>
-      // <<< REPLACE THIS WITH YOUR APPS SCRIPT WEB APP URL (must end with /exec) >>>
+      // Web App URL (filled as you requested)
       const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyg1Yr04J9FVEfTcEJDIpLYe39HpsV84IGLRlRnzFCgZg8zbSZ4W9f-g1WshOBHvPtyoA/exec";
     </script>
 
@@ -70,24 +70,25 @@ title: Contact — Reliable Store
     <!-- Hidden iframe to receive webapp response -->
     <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
 
-    <!-- Floating IP badge (visible by default; shows 'Detecting IP…' until resolved) -->
+    <!-- Minimal unobtrusive floating IP (extreme bottom-right, very faint) -->
     <div id="floating-ip"
+         aria-hidden="true"
          style="
            position: fixed;
-           bottom: 12px;
-           right: 12px;
-           background: rgba(255,255,255,0.92);
-           color: #111;
-           padding: 8px 10px;
-           font-size: 12px;
-           border-radius: 8px;
-           box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-           z-index: 99999;
+           bottom: 6px;
+           right: 6px;
+           background: transparent;
+           color: rgba(0,0,0,0.45);
+           padding: 4px 6px;
+           font-size: 11px;
+           border-radius: 6px;
+           z-index: 2147483647;
            pointer-events: none;
-           backdrop-filter: blur(2px);
+           opacity: 0.55;
+           transition: opacity 180ms ease;
          ">
-      Detecting IP…
     </div>
+
     <!-- ===== END: Contact form ===== -->
 
     <p style="margin-top:18px;">Or email us at  
@@ -111,8 +112,8 @@ title: Contact — Reliable Store
   // set UA immediately
   if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
 
-  // Fetch IP (multiple services, small timeouts). Update badge when found.
-  async function fetchIpOnce(timeoutMsPerProvider = 1500) {
+  // Fetch IP (multiple providers, short timeouts). If found, set hidden field and display faintly.
+  async function fetchIpOnce(timeoutMsPerProvider = 1400) {
     const services = [
       'https://api.ipify.org?format=json',
       'https://ifconfig.co/json',
@@ -129,42 +130,44 @@ title: Contact — Reliable Store
         const ip = j && (j.ip || j.ip_address || j.query || j.ipAddress || j.address);
         if (ip && ip.toString().trim()) {
           clientIpEl.value = ip.toString().trim();
-          if (floatingIp) floatingIp.textContent = 'Your IP: ' + clientIpEl.value;
+          if (floatingIp) {
+            floatingIp.textContent = clientIpEl.value; // show just the IP to keep it subtle
+            floatingIp.style.opacity = '0.55';
+          }
           return clientIpEl.value;
         }
       } catch (e) {
         // try next provider
       }
     }
-    // if none succeeded, keep the default "Detecting IP…" (or you can change text here)
     return '';
   }
 
-  // Start fetching IP immediately
+  // Start fetching IP immediately (doesn't block form)
   fetchIpOnce();
 
-  // Optionally disable send briefly until IP or small timeout
+  // Briefly disable send to reduce race, but allow send after WAIT_MS
   sendBtn.disabled = true;
   sendBtn.style.opacity = 0.6;
-  const WAIT_MS = 2200;
+  const WAIT_MS = 2000;
   setTimeout(() => {
     sendBtn.disabled = false;
     sendBtn.style.opacity = 1;
   }, WAIT_MS);
 
-  // iframe onload: show success and clear badge after submit
+  // iframe onload: show success and keep subtle IP visible
   let submitted = false;
   window.onIFrameLoad = function() {
     if (!submitted) return;
-    statusEl.style.display = 'block';
-    errEl.style.display = 'none';
+    try { if (statusEl) statusEl.style.display = 'block'; } catch(e){}
+    try { if (errEl) errEl.style.display = 'none'; } catch(e){}
     try { form.reset(); } catch(e){}
-    clientIpEl.value = '';
-    if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
-    // hide badge text after submit (you can keep it if you prefer)
-    try { floatingIp.textContent = ''; } catch(e){}
+    try { clientIpEl.value = ''; } catch(e){}
+    try { if (userAgentEl) userAgentEl.value = navigator.userAgent || ''; } catch(e){}
+    // keep the tiny IP text visible (no highlight)
+    try { if (floatingIp) floatingIp.style.opacity = '0.35'; } catch(e){}
     submitted = false;
-    setTimeout(()=> statusEl.style.display = 'none', 5000);
+    setTimeout(()=>{ try{ if (statusEl) statusEl.style.display='none'; }catch(e){} }, 4500);
   };
 
   // client-side validators
@@ -197,7 +200,7 @@ title: Contact — Reliable Store
       return;
     }
 
-    // final quick attempt to fetch IP if empty
+    // quick attempt to fetch IP if empty
     if (!clientIpEl.value) {
       try {
         const r = await fetch('https://api.ipify.org?format=json', {cache:'no-store', method:'GET'});
@@ -205,7 +208,7 @@ title: Contact — Reliable Store
           const j = await r.json();
           if (j && j.ip) {
             clientIpEl.value = j.ip;
-            if (floatingIp) floatingIp.textContent = 'Your IP: ' + j.ip;
+            if (floatingIp) { floatingIp.textContent = j.ip; floatingIp.style.opacity = '0.55'; }
           }
         }
       } catch(e){}
@@ -231,8 +234,8 @@ title: Contact — Reliable Store
 </script>
 
 <style>
-  /* ensure the floating badge stays subtle on small screens */
+  /* minimal responsive tweak for tiny screens */
   @media (max-width:420px) {
-    #floating-ip { font-size:11px; bottom:8px; right:8px; padding:6px 8px; }
+    #floating-ip { font-size:10px !important; bottom:6px !important; right:6px !important; padding:3px 5px !important; }
   }
 </style>
