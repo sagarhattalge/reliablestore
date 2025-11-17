@@ -1,171 +1,267 @@
-/* =========================================
-   RELIABLESTORE GLOBAL THEME
-   ========================================= */
+/* ============================
+   ReliableStore — Optimized CSS
+   Brand color: --brand: #FE9900
+   Notes: Single-file, de-duplicated, responsive-friendly
+   ============================ */
+
+/* ---------- Root variables ---------- */
 :root{
-  --brand:#FE9900;          /* Primary site color */
-  --brand-dark:#d97f00;
-  --bg:#f6fbff;
-  --card:#ffffff;
-  --text:#111;
-  --muted:#6b7280;
-  --accent:#FE9900;
-  --shadow:0 4px 12px rgba(0,0,0,.06);
+  --brand: #FE9900;       /* primary brand color */
+  --brand-600: #d97f00;   /* hover/darker */
+  --dark: #0f1720;
+  --muted: #6b7280;
+  --bg: #f6f8fb;
+  --text: #111;
+  --maxw: 1180px;
+  --wide-max: 1600px;
+  --radius: 8px;
+  --shadow-soft: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-strong: 0 6px 18px rgba(0,0,0,0.12);
+  --transition: 180ms ease;
+  --ui-font: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-/* Reset / Base */
-*{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:Inter, system-ui, Arial, sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  margin:0;
-}
-img{max-width:100%;display:block}
-
-/* =========================================
-   HEADER
-   ========================================= */
-.site-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:18px 24px;
-  background:#fff;
-  border-bottom:1px solid #ececec;
-  position:sticky;
-  top:0;
-  z-index:999;
-}
-.site-header h1{
-  margin:0;
-  font-size:20px;
-  font-weight:700;
-  color:var(--brand);
+/* ---------- Base / Reset ---------- */
+* { box-sizing: border-box; }
+html,body { height:100%; }
+body {
+  margin: 0;
+  font-family: var(--ui-font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Header Buttons */
-.header-actions a{
-  font-size:14px;
-  text-decoration:none;
-  color:var(--brand);
-  font-weight:600;
-  margin-left:14px;
-}
-.header-actions a:hover{
-  color:var(--brand-dark);
+/* Utility container */
+.wrap {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 18px;
 }
 
-/* =========================================
-   BUTTONS
-   ========================================= */
-.btn{
+/* Images */
+img { max-width:100%; height:auto; display:block; }
+
+/* Logo sizes */
+.logo { height:36px; display:block; }
+.logo-sm { height:34px; display:block; }
+
+/* Links / Buttons (brand rules) */
+a, a:visited { color: var(--brand); text-decoration: none; transition: color var(--transition); }
+a:hover, a:focus { color: var(--brand-600); }
+
+button, .btn, .btn-primary {
   display:inline-block;
-  padding:10px 14px;
-  border-radius:10px;
-  border:0;
-  cursor:pointer;
-  text-decoration:none;
-  font-size:14px;
-  transition:0.2s ease;
+  padding: 8px 12px;
+  background: var(--brand);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition), transform 120ms ease;
+}
+button:hover, .btn:hover { background: var(--brand-600); }
+button:disabled, .btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Basic typography */
+h1, h2, h3, h4 { margin:0 0 12px 0; font-weight:600; color:var(--text); }
+p { margin: 0 0 12px; color: var(--muted); }
+
+/* ---------- Header / Topbar ---------- */
+.site-topbar {
+  background: var(--dark);
+  color: #fff;
+  padding: 12px 0;
+  position: sticky;
+  top: 0;
+  z-index: 99999;
+  transition: transform .2s ease, box-shadow .24s ease;
 }
 
-.btn.primary{
-  background:var(--brand);
-  color:#fff;
-}
-.btn.primary:hover{
-  background:var(--brand-dark);
-}
+/* small variation when scrolled (add/remove class .scrolled from JS) */
+.site-topbar.scrolled { box-shadow: var(--shadow-strong); }
 
-/* =========================================
-   PRODUCT GRID
-   ========================================= */
-.container{
-  display:grid;
-  grid-template-columns:1fr 320px;
-  gap:18px;
-  padding:24px;
-}
-
-.products-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-  gap:18px;
-}
-
-.product{
-  background:var(--card);
-  padding:12px;
-  border-radius:12px;
-  box-shadow:var(--shadow);
-  text-align:center;
-  transition:0.25s ease;
-}
-.product:hover{
-  transform:translateY(-4px);
-  box-shadow:0 6px 16px rgba(0,0,0,0.08);
-}
-
-.product-image{
-  width:100%;
-  height:160px;
-  object-fit:cover;
-  border-radius:8px;
-  background:#fff;
-}
-
-.product-title{
-  font-size:16px;
-  margin:10px 0 6px;
-  font-weight:600;
-}
-
-.price{
-  font-weight:700;
-  color:var(--brand);
-}
-
-/* =========================================
-   CART PANEL
-   ========================================= */
-.cart-panel{
-  background:var(--card);
-  padding:18px;
-  border-radius:12px;
-  position:sticky;
-  top:20px;
-  align-self:start;
-  box-shadow:var(--shadow);
-}
-
-#cart-items{
-  list-style:none;
-  margin:0 0 12px 0;
-  padding:0;
-}
-
-#cart-items li{
+.site-topbar .wrap {
   display:flex;
-  justify-content:space-between;
-  padding:6px 0;
-  border-bottom:1px dashed #eee;
+  align-items:center;
+  gap:18px;
+  max-width: var(--wide-max);
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
-.cart-total{
-  font-weight:700;
-  margin-bottom:10px;
+/* Nav */
+.site-nav {
+  display:flex;
+  gap:14px;
+  margin-left:12px;
+  align-items:center;
+  overflow:visible;
+}
+.site-nav a {
+  color: #d2dae6;
+  font-size:14px;
+  padding:6px 6px;
+  display:inline-block;
+}
+.site-nav a:hover { color:var(--brand); }
+
+/* Header right actions */
+.header-actions {
+  margin-left:auto;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.header-actions .cart {
+  background: #0ea5e9;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #fff;
+  text-decoration: none;
 }
 
-/* =========================================
-   RESPONSIVE
-   ========================================= */
-@media (max-width:900px){
-  .container{
-    grid-template-columns:1fr;
-  }
-  .cart-panel{
-    position:relative;
-    top:auto;
-    margin-top:20px;
-  }
+/* ---------- Hero / Full width bands ---------- */
+.hero-full {
+  width:100%;
+  background-size:cover;
+  background-position:center;
+  min-height: 280px;
+  display:flex;
+  align-items:center;
+  position:relative;
 }
+.hero-overlay {
+  position:absolute;
+  inset:0;
+  background: rgba(255,255,255,0.55);
+  z-index:1;
+}
+.hero-inner {
+  max-width: var(--maxw);
+  margin:0 auto;
+  padding: 56px 18px;
+  text-align: center;
+  z-index:2;
+}
+.hero-inner h1 { font-size: 46px; margin:0 0 8px; }
+.hero-inner p { color: var(--muted); max-width:900px; margin:8px auto 0; font-size:18px; }
+
+/* ---------- Features grid ---------- */
+.features-wrap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+  gap: 28px;
+  padding: 40px 24px;
+}
+.feature {
+  background: #fff;
+  padding: 22px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+  min-height: 150px;
+}
+
+/* ---------- Full-bleed content helpers ---------- */
+.full-bleed,
+.features-band,
+.site-footer { width:100%; margin:0; padding:0; }
+.hero-inner,
+.features-wrap,
+.site-footer .wrap,
+.full-bleed-inner { max-width: var(--wide-max); margin:0 auto; padding: 32px 24px; }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  background: var(--dark);
+  color: #d1d5db;
+  padding: 50px 0;
+}
+.site-footer .wrap { display:flex; gap:28px; justify-content: space-between; flex-wrap:wrap; }
+.site-footer a { color: #c7ceda; text-decoration: none; display:block; margin-bottom:8px; }
+.site-footer .wrap > div { flex:1; min-width: 180px; }
+
+/* ---------- Sticky header shadow tweak for different screen heights ---------- */
+@media (max-height:540px) {
+  .hero-overlay { background: rgba(255,255,255,0.45); }
+}
+
+/* ---------- Responsive / Mobile ---------- */
+
+/* Small phones / mobile-friendly nav */
+@media (max-width:760px) {
+  .site-topbar .wrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .site-nav {
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:6px;
+    margin-left:0;
+  }
+  .site-nav a { white-space:nowrap; padding:6px 8px; font-size:14px; display:inline-block; }
+  .header-actions { margin-left:0; justify-content:flex-start; gap:8px; padding-top:6px; }
+
+  .hero-inner { padding: 24px 12px; text-align:left; }
+  .hero-inner h1 { font-size: 22px; line-height:1.15; margin-bottom:8px; }
+  .hero-inner p { font-size:14px; margin-top:8px; }
+
+  .features-wrap { grid-template-columns: 1fr; gap:12px; padding: 18px 12px; }
+  .site-footer .wrap { flex-direction: column; gap: 18px; }
+  .mobile-bottom-nav { display:block; }
+}
+
+/* Tablet / small-laptop */
+@media (min-width:761px) and (max-width:1000px) {
+  .hero-inner h1 { font-size: 28px; }
+  .hero-inner { padding: 32px 18px; }
+  .features-wrap { grid-template-columns: repeat(2,1fr); gap: 16px; }
+}
+
+/* Slightly larger mobile/tablet adjustments */
+@media (max-width:1000px) {
+  .features-wrap { grid-template-columns: repeat(2,1fr); }
+}
+
+/* ---------- Mobile bottom nav ---------- */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 18px;
+  z-index: 99999;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+}
+.mobile-bottom-nav a { color: #fff; text-decoration:none; margin:0 10px; font-size:14px; }
+@media (max-width:760px) { .mobile-bottom-nav { display:block; } }
+
+/* ---------- Utility helpers ---------- */
+.center { text-align:center; }
+.kicker { color:var(--muted); font-size:13px; }
+.card { background:#fff; padding:14px; border-radius:12px; box-shadow:var(--shadow-soft); }
+
+/* Accessibility focus styles (theming) */
+a:focus, button:focus, input:focus, textarea:focus {
+  outline: 3px solid rgba(254,153,0,0.18);
+  outline-offset: 3px;
+}
+
+/* ---------- Performance & specificity guidance ----------
+   - Avoid very deep selectors; prefer class names (already followed).
+   - Keep heavy shadows/transforms limited to interactive states.
+   - Use variables to tweak theme quickly.
+   - Deduped duplicated sections and consolidated hero/footer full-bleed rules.
+   ----------------------------------------------------------- */
