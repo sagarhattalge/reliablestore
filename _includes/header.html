@@ -1,28 +1,27 @@
 <header class="site-topbar" role="banner" aria-label="Site header">
-  <div class="wrap" style="display:flex;align-items:center;gap:12px;max-width:1600px;margin:0 auto;padding:0 24px;">
-    <!-- Preload logo for better LCP (copy this <link> into your <head> if possible for even better perf) -->
-    <!-- <link rel="preload" as="image" href="/assets/icons/Header%20Logo.png"> -->
-
-    <!-- Brand / Logo -->
-    <a href="/" class="brand" aria-label="ReliableStore — Home" style="display:inline-flex;align-items:center;">
+  <div class="wrap site-topbar-inner">
+    <!-- Logo -->
+    <a href="/" class="brand" aria-label="ReliableStore — Home">
       <img src="/assets/icons/Header%20Logo.png"
            alt="ReliableStore"
            class="logo"
            width="160" height="36"
-           loading="eager"
-           style="height:36px;width:auto;display:block;">
+           loading="eager">
     </a>
 
-    <!-- Mobile toggle (visible via CSS on small screens) -->
-    <button id="rs-nav-toggle" aria-controls="rs-main-nav" aria-expanded="false"
-            aria-label="Toggle navigation"
-            style="display:none;background:transparent;border:0;color:var(--brand);cursor:pointer;padding:8px;font-size:16px;">
-      ☰
+    <!-- Mobile nav toggle -->
+    <button id="rs-nav-toggle" class="rs-nav-toggle" aria-controls="rs-main-nav" aria-expanded="false"
+            aria-label="Toggle navigation">
+      <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true" focusable="false">
+        <rect width="20" height="2" y="0"></rect>
+        <rect width="20" height="2" y="6"></rect>
+        <rect width="20" height="2" y="12"></rect>
+      </svg>
     </button>
 
-    <!-- Main navigation -->
-    <nav id="rs-main-nav" class="site-nav" aria-label="Main navigation" style="display:flex;gap:14px;margin-left:12px;">
-      <ul style="list-style:none;margin:0;padding:0;display:flex;gap:14px;align-items:center;">
+    <!-- Main nav -->
+    <nav id="rs-main-nav" class="site-nav" aria-label="Main navigation">
+      <ul class="site-nav-list">
         <li><a href="/" class="nav-link">Home</a></li>
         <li><a href="/all-products.html" class="nav-link">All Products</a></li>
         <li><a href="/category.html" class="nav-link">Grocery &amp; Gourmet Foods</a></li>
@@ -31,41 +30,35 @@
       </ul>
     </nav>
 
-    <!-- Header actions (right-aligned) -->
-    <div class="header-actions" style="margin-left:auto;display:flex;gap:10px;align-items:center;">
-      <!-- Login link (lightweight) -->
-      <a href="/login.html" class="nav-link" style="color:var(--brand);font-size:14px;text-decoration:none;padding:6px 8px;">Login</a>
-
-      <!-- Sign up (prominent brand button) -->
-      <a href="/signup.html" class="btn" style="background:var(--brand);color:#fff;border-radius:8px;padding:6px 12px;font-weight:600;text-decoration:none;">
-        Sign up
-      </a>
-
-      <!-- Cart (small, accessible) -->
-      <a href="/cart.html" class="cart" aria-label="View cart" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:inherit;padding:6px 8px;">
-        <span aria-hidden="true">🛒</span>
-        <span id="cart-count" aria-live="polite" style="font-weight:600;">0</span>
+    <!-- Header actions -->
+    <div class="header-actions" role="region" aria-label="Header actions">
+      <a href="/login.html" class="nav-link header-login">Login</a>
+      <a href="/signup.html" class="btn header-signup">Sign up</a>
+      <a href="/cart.html" class="cart" aria-label="View cart">
+        <span class="cart-emoji" aria-hidden="true">🛒</span>
+        <span id="cart-count" aria-live="polite" class="cart-count">0</span>
       </a>
     </div>
   </div>
 
-  <!-- Minimal JS: toggle nav on small screens and add .scrolled class on scroll -->
+  <!-- Minimal JS: toggle mobile nav & add .scrolled class on scroll -->
   <script>
   (function(){
-    // tiny helper; keeps listeners passive and minimal
     const toggle = document.getElementById('rs-nav-toggle');
     const nav = document.getElementById('rs-main-nav');
     const topbar = document.querySelector('.site-topbar');
 
-    // show toggle on small screens via CSS - if you want it visible always remove this check
+    // helper: toggle nav visibility on small screens
     function updateToggleVisibility(){
-      if (!toggle) return;
-      const small = window.matchMedia('(max-width:760px)').matches;
-      toggle.style.display = small ? 'inline-block' : 'none';
-      // when switching to desktop ensure nav shown
-      if (!small && nav) nav.style.display = 'flex';
-      if (small && nav && toggle && toggle.getAttribute('aria-expanded') === 'true') {
-        nav.style.display = 'block';
+      const isSmall = window.matchMedia('(max-width:760px)').matches;
+      toggle.style.display = isSmall ? 'inline-flex' : 'none';
+      if (!isSmall) {
+        nav.style.display = 'flex';
+        toggle.setAttribute('aria-expanded','false');
+      } else {
+        // hide nav initially on small screens (but preserve if user opened)
+        if (toggle.getAttribute('aria-expanded') === 'true') nav.style.display = 'block';
+        else nav.style.display = 'none';
       }
     }
     updateToggleVisibility();
@@ -74,21 +67,15 @@
     if (toggle && nav) {
       toggle.addEventListener('click', function(){
         const expanded = this.getAttribute('aria-expanded') === 'true';
-        this.setAttribute('aria-expanded', !expanded);
-        if (!expanded) {
-          nav.style.display = 'block';
-        } else {
-          nav.style.display = 'none';
-        }
+        this.setAttribute('aria-expanded', String(!expanded));
+        if (!expanded) nav.style.display = 'block'; else nav.style.display = 'none';
       }, {passive:true});
     }
 
-    // Add .scrolled to header when user scrolls down a bit (improves readability)
-    let lastScroll = 0;
+    // add .scrolled when user scrolls
     window.addEventListener('scroll', function(){
-      const s = window.scrollY || window.pageYOffset;
-      if (s > 10) topbar.classList.add('scrolled'); else topbar.classList.remove('scrolled');
-      lastScroll = s;
+      if ((window.scrollY || window.pageYOffset) > 10) topbar.classList.add('scrolled');
+      else topbar.classList.remove('scrolled');
     }, {passive:true});
   })();
   </script>
