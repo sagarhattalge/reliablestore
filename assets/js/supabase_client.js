@@ -15,8 +15,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // --- Option B: Direct paste (if you don't use Jekyll Liquid) ---
 // Replace the placeholders below with your Project URL and anon key:
-export const SUPABASE_URL = 'https://your-project-ref.supabase.co'   // <- REPLACE
-export const SUPABASE_ANON_KEY = 'public-anon-key'                  // <- REPLACE
+export const SUPABASE_URL = 'https://gugcnntetqarewwnzrki.supabase.co'   // <- REPLACE
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg'                  // <- REPLACE
 
 // If you used the Jekyll option, comment out the Option B lines above and uncomment Option A.
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
