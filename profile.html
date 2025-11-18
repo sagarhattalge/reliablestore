@@ -15,7 +15,7 @@
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     }
     body{background:#f6f7fb;color:#111;margin:0;padding:24px;display:flex;justify-content:center;}
-    .wrap{width:100%;max-width:var(--maxw);}
+    .wrap{width:100%;max-width:var(--maxw);}    
     .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
     h1{margin:0;font-size:28px}
     .grid{display:grid;grid-template-columns:250px 1fr;gap:20px}
@@ -24,7 +24,7 @@
     .sidebar a.active{background:linear-gradient(90deg,var(--accent),#ffb36b);color:white}
     .card{background:var(--card-bg);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(10,10,15,0.06)}
     label{display:block;font-size:0.85rem;margin-bottom:6px;color:var(--muted)}
-    input[type="text"], input[type="email"], input[type="tel"], textarea, select{
+    input[type="text"], input[type="email"], input[type="tel"], textarea{
       width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;background:white;box-sizing:border-box;
     }
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -39,10 +39,7 @@
     .center{display:flex;gap:10px;align-items:center}
     .avatar{width:96px;height:96px;border-radius:999px;object-fit:cover;border:2px solid #eee}
     .hidden{display:none}
-    @media (max-width:880px){
-      .grid{grid-template-columns:1fr; }
-      .row{grid-template-columns:1fr}
-    }
+    @media (max-width:880px){ .grid{grid-template-columns:1fr;} .row{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
@@ -56,7 +53,6 @@
     </div>
 
     <div class="grid">
-      <!-- Sidebar -->
       <aside class="sidebar card">
         <a href="#" class="active" data-tab="profile">My Profile</a>
         <a href="#" data-tab="orders">My Orders</a>
@@ -64,7 +60,6 @@
         <a href="#" data-tab="settings">Settings</a>
       </aside>
 
-      <!-- Main -->
       <main>
         <section id="tab-profile" class="card">
           <div style="display:flex;gap:18px;align-items:center">
@@ -75,9 +70,8 @@
                   <label>Profile picture (URL)</label>
                   <input id="avatar_url" type="text" placeholder="https://..." />
                 </div>
-                <!-- Optionally we can add file upload later -->
               </div>
-              <div class="small muted" style="margin-top:6px">Tip: paste a hosted image URL. To upload files, create a Supabase Storage bucket named <code>avatars</code> (I can help)</div>
+              <div class="small muted" style="margin-top:6px">Tip: paste a hosted image URL.</div>
             </div>
           </div>
 
@@ -133,14 +127,14 @@
             </div>
 
             <div style="margin-top:12px">
-              <label>Notes / instructions (optional)</label>
-              <textarea id="notes" rows="3" placeholder="Any delivery notes or metadata"></textarea>
+              <label>Notes / instructions</label>
+              <textarea id="notes" rows="3"></textarea>
             </div>
 
             <div class="actions">
               <button id="btn_save" type="submit">Save profile</button>
               <button id="btn_cancel" type="button" class="ghost">Reset</button>
-              <div id="profileStatus" class="small muted"> </div>
+              <div id="profileStatus" class="small muted"></div>
             </div>
           </form>
         </section>
@@ -151,17 +145,14 @@
             <button id="btn_add_address">Add address</button>
           </div>
 
-          <div id="addressesList" class="addresses" style="margin-top:12px">
-            <!-- address cards inserted here -->
-          </div>
+          <div id="addressesList" class="addresses" style="margin-top:12px"></div>
 
-          <!-- address edit form modal (simple inline) -->
           <div id="addressFormWrap" class="hidden card" style="margin-top:12px">
             <h3 id="addressFormTitle">Add address</h3>
             <form id="addressForm">
               <div class="row">
                 <div>
-                  <label>Label (Home / Office)</label>
+                  <label>Label</label>
                   <input id="addr_label" type="text" />
                 </div>
                 <div>
@@ -208,321 +199,19 @@
 
         <section id="tab-orders" class="card hidden">
           <h2>Orders</h2>
-          <div class="muted">Orders list will appear here (we can wire this to <code>orders</code> table next).</div>
+          <div class="muted">Orders will appear here.</div>
         </section>
 
         <section id="tab-settings" class="card hidden">
           <h2>Settings</h2>
-          <div class="muted">Misc settings. Email: <span id="userEmail">-</span></div>
+          <div class="muted">Email: <span id="userEmail">-</span></div>
         </section>
       </main>
     </div>
   </div>
 
-  <script type="module">
-    import { supabase } from '/assets/js/supabase_client.js';
+<script type="module">
+import { supabase } from '/assets/js/supabase_client.js';
+const $ = id => document.getElementById(id);
 
-    // helpers
-    const $ = id => document.getElementById(id);
-    const el = sel => document.querySelector(sel);
-
-    // tabs
-    document.querySelectorAll('.sidebar a').forEach(a=>{
-      a.addEventListener('click', (e)=>{
-        e.preventDefault();
-        document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active'));
-        a.classList.add('active');
-        const tab = a.dataset.tab;
-        document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));
-        const target = $(`tab-${tab}`);
-        if (target) target.classList.remove('hidden');
-      });
-    });
-
-    // signout
-    $('btn_signout').addEventListener('click', async ()=>{
-      await supabase.auth.signOut();
-      window.location.href = '/login.html';
-    });
-
-    // UI elements
-    const profileStatus = $('profileStatus');
-    const profileForm = $('profileForm');
-    const avatar_preview = $('avatar_preview');
-
-    // Addresses UI
-    const addressesList = $('addressesList');
-    const addressFormWrap = $('addressFormWrap');
-    const addressForm = $('addressForm');
-    const btn_add_address = $('btn_add_address');
-    const addrStatus = $('addrStatus');
-    let editingAddressIndex = -1; // -1 add new
-
-    // Ensure user is authenticated, otherwise redirect
-    async function requireAuth() {
-      const { data } = await supabase.auth.getUser();
-      if (!data?.user) {
-        window.location.href = '/login.html';
-        return null;
-      }
-      return data.user;
-    }
-
-    // Load profile from customers table
-    async function loadProfileToUI() {
-      const user = await requireAuth();
-      if (!user) return;
-      $('loginStatus').innerText = `Signed in as ${user.email}`;
-      $('userEmail').innerText = user.email;
-
-      // fetch customers row
-      const { data, error } = await supabase.from('customers').select('*').eq('id', user.id).single();
-      if (error && error.code !== 'PGRST116') { // normal if not found
-        console.error('customers fetch error', error);
-        profileStatus.innerText = 'Error reading profile';
-        return;
-      }
-
-      // If row missing, create minimal row via upsert (so form has access)
-      if (!data) {
-        await supabase.from('customers').insert({ id: user.id, email: user.email });
-        // fetch again
-        const re = await supabase.from('customers').select('*').eq('id', user.id).single();
-        if (re.error) { profileStatus.innerText = 'Error creating profile row'; return; }
-        data = re.data;
-      }
-
-      // Now populate UI
-      const meta = data.metadata || {};
-      const names = (meta.full_name || '').split(' ');
-      $('first_name').value = names.shift() || '';
-      $('last_name').value = names.join(' ') || (meta.last_name || '');
-      $('phone').value = data.phone || (meta.phone || '');
-      $('alt_phone').value = meta.alt_phone || '';
-      $('country').value = data.country || meta.country || '';
-      $('state').value = data.state || meta.state || '';
-      $('city').value = data.city || meta.city || '';
-      $('postal_code').value = data.postal_code || meta.postal_code || '';
-      $('gst').value = meta.gst || '';
-      $('notes').value = meta.notes || '';
-      $('avatar_url').value = meta.avatar_url || '';
-      avatar_preview.src = meta.avatar_url || '/assets/icons/header-logo.png';
-
-      // addresses
-      const addresses = (meta.addresses && Array.isArray(meta.addresses)) ? meta.addresses : [];
-      renderAddresses(addresses);
-    }
-
-    // Render addresses
-    function renderAddresses(addresses) {
-      addressesList.innerHTML = '';
-      if (!addresses || addresses.length === 0) {
-        addressesList.innerHTML = '<div class="muted">No addresses saved yet.</div>';
-        return;
-      }
-      addresses.forEach((a, idx) => {
-        const div = document.createElement('div');
-        div.className = 'address-card';
-        div.innerHTML = `
-          <div style="display:flex;justify-content:space-between;align-items:start">
-            <div>
-              <div style="font-weight:600">${a.label || 'Address'} ${a.is_default ? '<span style="color:var(--accent);font-weight:700"> (Default)</span>' : ''}</div>
-              <div class="meta">${a.line || ''}</div>
-              <div class="small muted">${a.city || ''}, ${a.state || ''} - ${a.pin || ''}</div>
-              <div class="small muted">Phone: ${a.phone || ''}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <button class="ghost" data-idx="${idx}" data-action="edit">Edit</button>
-              <button class="ghost" data-idx="${idx}" data-action="delete">Delete</button>
-              <button class="ghost" data-idx="${idx}" data-action="make_default">Make default</button>
-            </div>
-          </div>
-        `;
-        addressesList.appendChild(div);
-      });
-
-      // attach events
-      addressesList.querySelectorAll('button').forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-          const idx = parseInt(btn.dataset.idx,10);
-          const action = btn.dataset.action;
-          handleAddressAction(idx, action);
-        });
-      });
-    }
-
-    // address actions
-    function handleAddressAction(index, action) {
-      // fetch metadata to edit
-      getMetadata().then(meta=>{
-        const addresses = Array.isArray(meta.addresses) ? meta.addresses : [];
-        if (action === 'edit') {
-          const a = addresses[index];
-          editingAddressIndex = index;
-          addressFormWrap.classList.remove('hidden');
-          $('addressFormTitle').innerText = 'Edit address';
-          $('addr_label').value = a.label||'';
-          $('addr_phone').value = a.phone||'';
-          $('addr_line').value = a.line||'';
-          $('addr_city').value = a.city||'';
-          $('addr_state').value = a.state||'';
-          $('addr_pincode').value = a.pin||'';
-          $('addr_country').value = a.country||'';
-        } else if (action === 'delete') {
-          if (!confirm('Delete this address?')) return;
-          addresses.splice(index,1);
-          saveMetadata({...meta, addresses}).then(()=>renderAddresses(addresses));
-        } else if (action === 'make_default') {
-          addresses.forEach((it,i)=> it.is_default = (i===index));
-          saveMetadata({...meta, addresses}).then(()=>renderAddresses(addresses));
-        }
-      });
-    }
-
-    // open add address form
-    btn_add_address.addEventListener('click', (e)=>{
-      editingAddressIndex = -1;
-      addressFormWrap.classList.remove('hidden');
-      $('addressFormTitle').innerText = 'Add address';
-      addressForm.reset();
-      addrStatus.innerText = '';
-    });
-
-    // Cancel address form
-    $('addr_cancel').addEventListener('click', (e)=>{
-      e.preventDefault();
-      addressFormWrap.classList.add('hidden');
-      editingAddressIndex = -1;
-    });
-
-    // Submit address form
-    addressForm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      addrStatus.innerText = 'Saving...';
-      const meta = await getMetadata();
-      const addresses = Array.isArray(meta.addresses) ? meta.addresses : [];
-
-      const newAddr = {
-        label: $('addr_label').value || 'Address',
-        phone: $('addr_phone').value || '',
-        line: $('addr_line').value || '',
-        city: $('addr_city').value || '',
-        state: $('addr_state').value || '',
-        pin: $('addr_pincode').value || '',
-        country: $('addr_country').value || '',
-        is_default: false
-      };
-
-      if (editingAddressIndex === -1) {
-        addresses.push(newAddr);
-      } else {
-        addresses[editingAddressIndex] = newAddr;
-      }
-
-      try {
-        await saveMetadata({...meta, addresses});
-        addrStatus.innerText = 'Saved';
-        renderAddresses(addresses);
-        addressFormWrap.classList.add('hidden');
-      } catch (err) {
-        console.error(err);
-        addrStatus.innerText = 'Error saving';
-      }
-    });
-
-    // get metadata helper
-    async function getMetadata() {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) throw new Error('Not signed in');
-      const uid = userData.user.id;
-      const { data, error } = await supabase.from('customers').select('metadata').eq('id', uid).single();
-      if (error && error.code !== 'PGRST116') throw error;
-      return data?.metadata || {};
-    }
-
-    // save metadata helper (upsert customers with metadata merged)
-    async function saveMetadata(metadata) {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) throw new Error('Not signed in');
-      const uid = userData.user.id;
-
-      // also update a few top-level columns for convenience (phone, country, etc)
-      const updates = {
-        id: uid,
-        email: userData.user.email,
-        metadata: metadata,
-        phone: $('phone').value || null,
-        country: $('country').value || null,
-        state: $('state').value || null,
-        city: $('city').value || null,
-        postal_code: $('postal_code').value || null
-      };
-
-      const { data, error } = await supabase.from('customers').upsert(updates, { returning: 'representation' });
-      if (error) throw error;
-      return data;
-    }
-
-    // Submit profile form
-    profileForm.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      profileStatus.innerText = 'Saving...';
-
-      // validation
-      const fn = $('first_name').value.trim();
-      const ln = $('last_name').value.trim();
-      const phone = $('phone').value.trim();
-      if (!fn || !ln || !phone) { profileStatus.innerText = 'Fill required fields'; return; }
-
-      // build metadata
-      const meta = await getMetadata();
-      meta.full_name = `${fn} ${ln}`;
-      meta.last_name = ln;
-      meta.alt_phone = $('alt_phone').value || '';
-      meta.gst = $('gst').value || '';
-      meta.notes = $('notes').value || '';
-      meta.avatar_url = $('avatar_url').value || '';
-
-      try {
-        await saveMetadata(meta);
-        profileStatus.innerText = 'Saved';
-        avatar_preview.src = meta.avatar_url || '/assets/icons/header-logo.png';
-      } catch (err) {
-        console.error(err);
-        profileStatus.innerText = 'Error saving profile';
-      }
-    });
-
-    // Reset profile form (reload)
-    $('btn_cancel').addEventListener('click', (e)=>{
-      loadProfileToUI();
-    });
-
-    // initial load
-    (async ()=>{
-      const user = await requireAuth();
-      if (!user) return;
-      // set avatar default while loading
-      avatar_preview.src = '/assets/icons/header-logo.png';
-      await loadProfileToUI();
-    })();
-
-    // listen to auth changes
-    supabase.auth.onAuthStateChange((_event, _session) => {
-      loadProfileToUI();
-    });
-
-    // OPTIONAL: File upload to Supabase Storage (uncomment if you create bucket "avatars")
-    /*
-    async function uploadAvatarFile(file) {
-      // requires: 1) create a bucket named 'avatars' in Supabase Storage and set public or generate URL
-      const { data, error } = await supabase.storage.from('avatars').upload(`public/${Date.now()}_${file.name}`, file, { cacheControl: '3600', upsert: false });
-      if (error) throw error;
-      const publicURL = supabase.storage.from('avatars').getPublicUrl(data.path).publicURL;
-      return publicURL;
-    }
-    */
-
-  </script>
-</body>
-</html>
+// Tabs
