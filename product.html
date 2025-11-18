@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Product — ReliableStore</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>body{font-family:Inter,system-ui;margin:0;background:#f6f7fb}.wrap{max-width:900px;margin:20px auto;padding:18px}.btn{background:#FE9900;color:#fff;padding:8px 10px;border-radius:8px;border:0;cursor:pointer}</style>
+</head>
+<body>
+  <div class="wrap card">
+    <div id="productRoot">
+      <h2 id="p_title">Loading…</h2>
+      <img id="p_image" src="/assets/icons/header-logo.png" style="width:100%;max-height:360px;object-fit:cover;border-radius:8px" loading="lazy" />
+      <p id="p_price" style="font-weight:700;margin-top:8px"></p>
+      <p id="p_desc"></p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="btn_add" class="btn">Add to cart</button>
+        <a id="back" href="/">Back to store</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { addToCart } from '/assets/js/cart_helpers.js';
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id') || 'p1';
+
+    const products = {
+      p1:{id:'p1', title:'Product 1', price:499, image:'/assets/images/p1.jpg', desc:'Nice product 1.'},
+      p2:{id:'p2', title:'Product 2', price:799, image:'/assets/images/p2.jpg', desc:'Nice product 2.'},
+      p3:{id:'p3', title:'Product 3', price:1299, image:'/assets/images/p3.jpg', desc:'Nice product 3.'}
+    };
+
+    const p = products[id] || products.p1;
+    document.getElementById('p_title').innerText = p.title;
+    document.getElementById('p_image').src = p.image;
+    document.getElementById('p_price').innerText = '₹' + p.price;
+    document.getElementById('p_desc').innerText = p.desc;
+
+    document.getElementById('btn_add').addEventListener('click', ()=> addToCart(p));
+  </script>
+
+  <script type="module" src="/assets/js/site_header.js"></script>
+</body>
+</html>
