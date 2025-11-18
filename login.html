@@ -1,93 +1,63 @@
+<!-- login.html -->
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
+  <title>Login — ReliableStore</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ReliableStore — Login</title>
   <style>
-    body { font-family: system-ui, -apple-system, Roboto, "Segoe UI", Arial; max-width:720px; margin:40px auto; padding:0 16px; }
-    input { display:block; width:100%; padding:10px; margin:8px 0; box-sizing:border-box }
-    button { padding:10px 16px; margin:6px 6px 6px 0; }
-    .note { color:#555; font-size:0.95rem }
+    body{font-family:Inter,system-ui;padding:24px;background:#f6f7fb}
+    .card{max-width:420px;margin:30px auto;padding:18px;background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(10,10,15,0.06)}
+    input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #ddd}
+    button{background:#FE9900;color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer}
+    a{color:#FE9900}
   </style>
 </head>
 <body>
-  <h1>ReliableStore — Account</h1>
-
-  <section>
-    <h2>Create account</h2>
-    <input id="signup_email" type="email" placeholder="Email" />
-    <input id="signup_password" type="password" placeholder="Password (min 6 chars)" />
-    <button id="btn_signup">Sign up</button>
-    <p class="note">After signing up you will receive a verification email. Please verify before logging in.</p>
-  </section>
-
-  <hr/>
-
-  <section>
-    <h2>Sign in</h2>
-    <input id="signin_email" type="email" placeholder="Email" />
-    <input id="signin_password" type="password" placeholder="Password" />
-    <button id="btn_signin">Sign in</button>
-    <button id="btn_signin_magic">Send magic link (email)</button>
-  </section>
-
-  <p>
-    <a href="/forgot-password.html">Forgot password?</a> ·
-    <a href="/profile.html">Go to profile (protected)</a>
-  </p>
-
-  <div id="status" style="margin-top:18px;color: #1a1a1a"></div>
+  <div class="card">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label>Email</label>
+      <input id="email" type="email" required />
+      <label>Password</label>
+      <input id="password" type="password" required />
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button type="submit">Sign in</button>
+        <button id="back" type="button">Cancel</button>
+      </div>
+      <div style="margin-top:8px">Don't have an account? <a href="/signup.html">Create one</a></div>
+      <div id="status" style="margin-top:10px;color:#b00020"></div>
+    </form>
+  </div>
 
   <script type="module">
-    import { supabase } from '/assets/js/supabase_client.js'
+    import { supabase } from '/assets/js/supabase_client.js';
+    const params = new URLSearchParams(location.search);
+    const returnTo = params.get('returnTo') || '/';
 
-    const status = msg => { document.getElementById('status').innerText = msg || '' }
+    document.getElementById('back').addEventListener('click', ()=> location.href = returnTo);
 
-    // Sign up
-    document.getElementById('btn_signup').addEventListener('click', async () => {
-      status('Signing up...')
-      const email = document.getElementById('signup_email').value
-      const password = document.getElementById('signup_password').value
-      if (!email || !password) return status('Enter email and password.')
-      const { data, error } = await supabase.auth.signUp({ email, password }, { redirectTo: `${window.location.origin}/login.html` })
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.textContent = '';
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        status('Signup error: ' + error.message)
-      } else {
-        status('Signup successful — check your email for verification link.')
+        status.textContent = error.message;
+        return;
       }
-    })
+      // on success - redirect user back to original page
+      window.location.href = returnTo;
+    });
 
-    // Sign in with password
-    document.getElementById('btn_signin').addEventListener('click', async () => {
-      status('Signing in...')
-      const email = document.getElementById('signin_email').value
-      const password = document.getElementById('signin_password').value
-      if (!email || !password) return status('Enter email and password.')
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        status('Login error: ' + error.message)
-      } else {
-        status('Logged in successfully.')
-        // redirect to profile/dashboard
-        window.location.href = '/profile.html'
-      }
-    })
-
-    // Magic link
-    document.getElementById('btn_signin_magic').addEventListener('click', async () => {
-      status('Sending magic link...')
-      const email = document.getElementById('signin_email').value
-      if (!email) return status('Enter email first.')
-      const { data, error } = await supabase.auth.signInWithOtp({ email })
-      if (error) status('Error sending magic link: ' + error.message)
-      else status('Magic link sent. Check your email.')
-    })
-
-    // Show signed in user in console and handle redirect after verify
-    supabase.auth.onAuthStateChange((event, session) => {
-      console.log('auth event', event, session)
-    })
+    // if user already signed in, redirect back immediately
+    (async ()=>{
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) location.href = returnTo;
+    })();
   </script>
+  <script type="module" src="/assets/js/site_header.js"></script>
 </body>
 </html>
