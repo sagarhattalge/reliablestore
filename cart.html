@@ -1,4 +1,3 @@
-<!-- cart.html -->
 <!doctype html>
 <html>
 <head>
@@ -9,7 +8,6 @@
     body{font-family:Inter,system-ui;padding:18px;background:#f6f7fb}
     .wrap{max-width:980px;margin:0 auto}
     .card{background:#fff;padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(10,10,15,0.06)}
-    .row{display:flex;gap:12px;align-items:center}
     .item{display:flex;gap:12px;padding:12px;border-bottom:1px solid #f0f0f0;align-items:center}
     .img{width:80px;height:80px;object-fit:cover;border-radius:8px}
     .qty{display:flex;gap:6px;align-items:center}
@@ -38,11 +36,9 @@
 
   <script type="module">
     import { supabase } from '/assets/js/supabase_client.js';
-    // helper to read/write cart
     const CART_KEY = 'rs_cart_v1';
     function readCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY) || '{}'); }catch(e){ return {}; } }
     function writeCart(cart){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); window.dispatchEvent(new Event('storage')); }
-
     function formatPrice(n){ return Number(n||0).toFixed(2); }
 
     function renderCart() {
@@ -67,7 +63,7 @@
         const item = document.createElement('div');
         item.className = 'item';
         item.innerHTML = `
-          <img class="img" src="${p.image || '/assets/icons/header-logo.png'}" alt="${p.title||''}" />
+          <img class="img" src="${p.image || '/assets/icons/header-logo.png'}" alt="${p.title||''}" loading="lazy" />
           <div style="flex:1">
             <div style="font-weight:600">${p.title || ''}</div>
             <div style="color:#666">₹${formatPrice(p.price)}</div>
@@ -87,29 +83,18 @@
 
       document.getElementById('cart_total').innerText = formatPrice(total);
 
-      // attach events
       document.querySelectorAll('.btn-plus').forEach(b => b.addEventListener('click', (e)=> {
-        const id = b.dataset.id;
-        changeQty(id, 1);
+        const id = b.dataset.id; changeQty(id, 1);
       }));
       document.querySelectorAll('.btn-minus').forEach(b => b.addEventListener('click', (e)=> {
-        const id = b.dataset.id;
-        changeQty(id, -1);
+        const id = b.dataset.id; changeQty(id, -1);
       }));
       document.querySelectorAll('.btn-remove').forEach(b => b.addEventListener('click', (e)=> {
-        const id = b.dataset.id;
-        removeItem(id);
+        const id = b.dataset.id; removeItem(id);
       }));
       document.querySelectorAll('.qty-input').forEach(inp=>{
-        inp.addEventListener('input', (e)=>{
-          // numbers only
-          inp.value = inp.value.replace(/[^0-9]/g,'');
-        });
-        inp.addEventListener('change', (e)=>{
-          const id = inp.dataset.id;
-          const v = parseInt(inp.value || '0', 10);
-          setQty(id, isNaN(v)?0:v);
-        });
+        inp.addEventListener('input', (e)=>{ inp.value = inp.value.replace(/[^0-9]/g,''); });
+        inp.addEventListener('change', (e)=>{ const id = inp.dataset.id; const v = parseInt(inp.value || '0', 10); setQty(id, isNaN(v)?0:v); });
       });
     }
 
@@ -117,50 +102,26 @@
       const cart = readCart();
       if (!cart[id]) return;
       cart[id].qty = (cart[id].qty || 0) + delta;
-      if (cart[id].qty <= 0) {
-        delete cart[id];
-      }
-      writeCart(cart);
-      renderCart();
+      if (cart[id].qty <= 0) { delete cart[id]; }
+      writeCart(cart); renderCart();
     }
 
     function setQty(id, qty){
       const cart = readCart();
-      if (qty <= 0) {
-        delete cart[id];
-      } else {
-        cart[id] = cart[id] || { id, title:'Unknown', price:0, qty:0 };
-        cart[id].qty = qty;
-      }
-      writeCart(cart);
-      renderCart();
+      if (qty <= 0) { delete cart[id]; } else { cart[id] = cart[id] || { id, title:'Unknown', price:0, qty:0 }; cart[id].qty = qty; }
+      writeCart(cart); renderCart();
     }
 
-    function removeItem(id){
-      const cart = readCart();
-      delete cart[id];
-      writeCart(cart);
-      renderCart();
-    }
+    function removeItem(id){ const cart = readCart(); delete cart[id]; writeCart(cart); renderCart(); }
 
     document.getElementById('btn_continue').addEventListener('click', ()=> window.location.href = '/');
-
     document.getElementById('btn_checkout').addEventListener('click', async ()=>{
-      // For now we just require login. You can expand to create order rows in Supabase or integrate payment gateway.
       const { data } = await supabase.auth.getUser();
-      if (!data?.user) {
-        // redirect to login and preserve current page
-        const returnTo = encodeURIComponent(window.location.pathname);
-        window.location.href = '/login.html?returnTo=' + returnTo;
-        return;
-      }
+      if (!data?.user) { const returnTo = encodeURIComponent(window.location.pathname); window.location.href = '/login.html?returnTo=' + returnTo; return; }
       alert('Proceed to checkout (integration TBD). You are signed in as ' + data.user.email);
     });
 
-    // initial render
     renderCart();
-
-    // respond to storage changes (update cart count in header, etc.)
     window.addEventListener('storage', renderCart);
   </script>
 
