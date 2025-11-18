@@ -1,146 +1,63 @@
----
-layout: default
-title: Sign up — Reliable Store
----
-
-<section class="hero-full" style="background:#fff;padding:28px 0;">
-  <div class="hero-inner" style="max-width:900px;margin:0 auto;padding:18px;">
-    <h1>Create an account</h1>
-    <p style="color:var(--muted)">Create an account to save address, track orders and checkout faster.</p>
+<!-- signup.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Sign up — ReliableStore</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,system-ui;padding:24px;background:#f6f7fb}
+    .card{max-width:420px;margin:30px auto;padding:18px;background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(10,10,15,0.06)}
+    input{width:100%;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #ddd}
+    button{background:#FE9900;color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Create account</h2>
+    <form id="signupForm">
+      <label>Email</label>
+      <input id="email" type="email" required />
+      <label>Password</label>
+      <input id="password" type="password" required minlength="6" />
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button type="submit">Sign up</button>
+      </div>
+      <div id="status" style="margin-top:10px;color:#b00020"></div>
+    </form>
   </div>
-</section>
 
-<section class="full-bleed">
-  <div class="full-bleed-inner" style="max-width:900px;margin:0 auto;padding:24px;">
-    <div style="background:#fff;padding:20px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.04)">
+  <script type="module">
+    import { supabase } from '/assets/js/supabase_client.js';
+    const params = new URLSearchParams(location.search);
+    const returnTo = params.get('returnTo') || '/';
 
-      <form id="signupForm" autocomplete="on" novalidate>
-        <label>
-          Full name<br/>
-          <input id="su_name" name="name" type="text" required minlength="2"
-                 placeholder="Your full name" style="width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:8px"/>
-        </label>
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.textContent = '';
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-        <label style="margin-top:12px">
-          Email<br/>
-          <input id="su_email" name="email" type="email" required
-                 placeholder="name@example.com" style="width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:8px"/>
-        </label>
+      // include redirectTo for magic links or confirmation links, if needed:
+      const { data, error } = await supabase.auth.signUp({ email, password }, { redirectTo: window.location.origin + returnTo });
+      if (error) {
+        status.textContent = error.message;
+        return;
+      }
 
-        <label style="margin-top:12px">
-          Phone (10 digits)<br/>
-          <input id="su_phone" name="phone" type="tel" required pattern="\d{10}"
-                 placeholder="10-digit mobile number" style="width:100%;padding:10px;border:1px solid #e6e9ef;border-radius:8px"/>
-        </label>
+      // If your Supabase requires email confirmation, signUp will send an email.
+      // We'll redirect the user back anyway (or you can show a "check inbox" message)
+      window.location.href = returnTo;
+    });
 
-        <label style="margin-top:12px">
-          Password<br/>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input id="su_password" name="password" type="password" required minlength="8"
-                   placeholder="Create a password" style="flex:1;padding:10px;border:1px solid #e6e9ef;border-radius:8px"/>
-            <button id="su_toggle" type="button" style="background:transparent;border:0;cursor:pointer;color:var(--brand)">Show</button>
-          </div>
-          <div id="pw_hint" style="font-size:13px;color:var(--muted);margin-top:6px">
-            Use 8+ characters. Include letters & numbers.
-          </div>
-        </label>
+    // if user already signed in, go back immediately
+    (async ()=>{
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) location.href = returnTo;
+    })();
+  </script>
 
-        <!-- simple checkbox for agreeing to terms -->
-        <label style="margin-top:12px;font-size:14px">
-          <input id="su_terms" type="checkbox" style="margin-right:8px"/> I agree to the <a href="/privacy.html">Privacy Policy</a>
-        </label>
-
-        <div id="su_msg" style="margin-top:12px;color:#b00020;display:none"></div>
-
-        <button id="su_submit" type="submit" class="btn" style="margin-top:14px">Create account</button>
-
-        <p style="margin-top:12px;color:var(--muted)">Already have an account? <a href="/login.html" style="color:var(--brand)">Login</a></p>
-      </form>
-    </div>
-  </div>
-</section>
-
-<script>
-/*
-  Demo sign-up logic (browser-only).
-  - This stores a user object in localStorage for demo/testing only.
-  - Production: use a secure backend or a provider (Firebase Auth).
-*/
-(function(){
-  const form = document.getElementById('signupForm');
-  const nameEl = document.getElementById('su_name');
-  const emailEl = document.getElementById('su_email');
-  const phoneEl = document.getElementById('su_phone');
-  const pwEl = document.getElementById('su_password');
-  const termsEl = document.getElementById('su_terms');
-  const msgEl = document.getElementById('su_msg');
-  const toggle = document.getElementById('su_toggle');
-  const submitBtn = document.getElementById('su_submit');
-
-  function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e||'').toLowerCase()); }
-  function validPhone(p){ return /^[0-9]{10}$/.test(String((p||'').replace(/\D/g,''))); }
-  function passwordStrength(p){
-    if (!p) return 0;
-    let score = 0;
-    if (p.length >= 8) score++;
-    if (/[a-z]/.test(p) && /[A-Z]/.test(p)) score++;
-    if (/[0-9]/.test(p)) score++;
-    if (/[^A-Za-z0-9]/.test(p)) score++;
-    return score;
-  }
-
-  toggle.addEventListener('click', ()=> {
-    if (pwEl.type === 'password'){ pwEl.type = 'text'; toggle.textContent = 'Hide'; }
-    else { pwEl.type = 'password'; toggle.textContent = 'Show'; }
-  });
-
-  form.addEventListener('submit', function(ev){
-    ev.preventDefault();
-    msgEl.style.display = 'none'; msgEl.textContent = '';
-
-    const name = nameEl.value.trim();
-    const email = emailEl.value.trim();
-    const phone = phoneEl.value.trim().replace(/\D/g,'');
-    const password = pwEl.value;
-
-    const errors = [];
-    if (name.length < 2) errors.push('Please enter your name (2+ chars).');
-    if (!validEmail(email)) errors.push('Enter a valid email.');
-    if (!validPhone(phone)) errors.push('Enter a valid 10-digit phone number.');
-    if (password.length < 8 || passwordStrength(password) < 2) errors.push('Create a stronger password (8+ chars, include letters & numbers).');
-    if (!termsEl.checked) errors.push('Please accept the privacy policy.');
-
-    if (errors.length){
-      msgEl.style.display = 'block'; msgEl.style.color = '#b00020';
-      msgEl.innerText = errors.join(' ');
-      return;
-    }
-
-    // store user in localStorage demo store (NOT SECURE)
-    const users = JSON.parse(localStorage.getItem('rs_users')||'{}');
-    if (users[email]) {
-      msgEl.style.display = 'block'; msgEl.style.color = '#b00020';
-      msgEl.innerText = 'An account with this email already exists. Please login.';
-      return;
-    }
-
-    // Demo: store hashed-like token (not real hashing). For production use server hashing.
-    const record = {
-      name, email, phone,
-      // WARNING: this is NOT secure. It's a demo-only obfuscation.
-      pw_token: btoa(password), // demo only
-      created: new Date().toISOString()
-    };
-    users[email] = record;
-    localStorage.setItem('rs_users', JSON.stringify(users));
-
-    // mark logged-in session (localStorage)
-    localStorage.setItem('rs_user_session', JSON.stringify({ email, name }));
-
-    // success UX
-    msgEl.style.display = 'block'; msgEl.style.color = 'green';
-    msgEl.innerText = 'Account created — you are now logged in (demo). Redirecting...';
-    setTimeout(()=> { window.location.href = '/'; }, 900);
-  });
-})();
-</script>
+  <script type="module" src="/assets/js/site_header.js"></script>
+</body>
+</html>
