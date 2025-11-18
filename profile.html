@@ -6,16 +6,11 @@
   <title>ReliableStore — My Account</title>
   <style>
     :root{
-      --maxw:980px;
-      --accent:#FE9900;
-      --muted:#666;
-      --card-bg:#fff;
-      --radius:12px;
-      --gap:16px;
+      --maxw:980px; --accent:#FE9900; --muted:#666; --card-bg:#fff; --radius:12px; --gap:16px;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
     }
-    body{background:#f6f7fb;color:#111;margin:0;padding:24px;display:flex;justify-content:center;}
-    .wrap{width:100%;max-width:var(--maxw);}    
+    body{background:#f6f7fb;color:#111;margin:0;padding:24px;display:flex;justify-content:center}
+    .wrap{width:100%;max-width:var(--maxw)}
     .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
     h1{margin:0;font-size:28px}
     .grid{display:grid;grid-template-columns:250px 1fr;gap:20px}
@@ -24,7 +19,7 @@
     .sidebar a.active{background:linear-gradient(90deg,var(--accent),#ffb36b);color:white}
     .card{background:var(--card-bg);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(10,10,15,0.06)}
     label{display:block;font-size:0.85rem;margin-bottom:6px;color:var(--muted)}
-    input[type="text"], input[type="email"], input[type="tel"], textarea{
+    input[type="text"], input[type="email"], input[type="tel"], textarea, select{
       width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;background:white;box-sizing:border-box;
     }
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -37,9 +32,12 @@
     .address-card .meta{font-size:0.9rem;color:#333}
     .muted{color:var(--muted);font-size:0.9rem}
     .center{display:flex;gap:10px;align-items:center}
-    .avatar{width:96px;height:96px;border-radius:999px;object-fit:cover;border:2px solid #eee}
+    .avatar-wrap{width:120px;height:90px;border-radius:8px;border:1px dashed #ddd;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fafafa;cursor:pointer}
+    .avatar{width:100%;height:100%;object-fit:cover;display:block}
+    .avatar-placeholder{font-size:14px;color:var(--muted);text-align:center}
     .hidden{display:none}
-    @media (max-width:880px){ .grid{grid-template-columns:1fr;} .row{grid-template-columns:1fr} }
+    .error{color:#b00020}
+    @media (max-width:880px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -63,40 +61,45 @@
       <main>
         <section id="tab-profile" class="card">
           <div style="display:flex;gap:18px;align-items:center">
-            <img id="avatar_preview" class="avatar" src="" alt="avatar" />
+            <div id="avatar_wrap" class="avatar-wrap" title="Add photo">
+              <div id="avatar_placeholder" class="avatar-placeholder">Add photo</div>
+              <img id="avatar_preview" class="avatar hidden" src="" alt="avatar" />
+            </div>
             <div style="flex:1">
-              <div style="display:flex;gap:12px;align-items:center">
-                <div>
-                  <label>Profile picture (URL)</label>
-                  <input id="avatar_url" type="text" placeholder="https://..." />
-                </div>
-              </div>
-              <div class="small muted" style="margin-top:6px">Tip: paste a hosted image URL.</div>
+              <div class="small muted">Click the box to upload a profile photo (optional)</div>
             </div>
           </div>
 
+          <input id="avatar_file" type="file" accept="image/*" class="hidden" />
+
           <hr style="margin:14px 0;border:none;border-top:1px solid #eee"/>
 
-          <form id="profileForm">
+          <form id="profileForm" novalidate>
             <div class="row">
               <div>
                 <label>First name *</label>
-                <input id="first_name" type="text" required />
+                <input id="first_name" type="text" autocomplete="given-name" required />
+                <div id="first_err" class="small error hidden">Enter at least 2 letters (A–Z)</div>
               </div>
               <div>
                 <label>Last name *</label>
-                <input id="last_name" type="text" required />
+                <input id="last_name" type="text" autocomplete="family-name" required />
+                <div id="last_err" class="small error hidden">Enter at least 2 letters (A–Z)</div>
               </div>
             </div>
 
             <div style="margin-top:12px">
               <label>Phone *</label>
-              <input id="phone" type="tel" required />
+              <div style="display:flex;gap:8px">
+                <select id="country_code" style="width:120px"></select>
+                <input id="phone" type="tel" inputmode="numeric" pattern="[0-9]{10}" placeholder="10 digits" required />
+              </div>
+              <div id="phone_err" class="small error hidden">Enter a 10-digit phone number (digits only)</div>
             </div>
 
             <div style="margin-top:12px">
               <label>Alternate phone (optional)</label>
-              <input id="alt_phone" type="tel" />
+              <input id="alt_phone" type="tel" inputmode="numeric" />
             </div>
 
             <div style="margin-top:12px">
@@ -106,7 +109,7 @@
 
             <div class="row" style="margin-top:12px">
               <div>
-                <label>State</label>
+                <label>State / District</label>
                 <input id="state" type="text" />
               </div>
               <div>
@@ -212,6 +215,121 @@
 
 <script type="module">
 import { supabase } from '/assets/js/supabase_client.js';
+
 const $ = id => document.getElementById(id);
 
 // Tabs
+document.querySelectorAll('.sidebar a').forEach(a=>{ a.addEventListener('click', (e)=>{ e.preventDefault(); document.querySelectorAll('.sidebar a').forEach(x=>x.classList.remove('active')); a.classList.add('active'); const tab = a.dataset.tab; document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden')); const target = document.getElementById('tab-'+tab); if (target) target.classList.remove('hidden'); }); });
+
+// signout
+$('btn_signout').addEventListener('click', async ()=>{ await supabase.auth.signOut(); window.location.href = '/login.html'; });
+
+// avatar upload
+const avatar_wrap = $('avatar_wrap');
+const avatar_file = $('avatar_file');
+const avatar_preview = $('avatar_preview');
+const avatar_placeholder = $('avatar_placeholder');
+
+avatar_wrap.addEventListener('click', ()=> avatar_file.click());
+avatar_file.addEventListener('change', async (e)=>{
+  const f = e.target.files[0];
+  if (!f) return;
+  // upload to supabase storage - requires a public bucket named 'avatars'
+  try {
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) throw new Error('Not signed in');
+    const path = `public/${user.id}/${Date.now()}_${f.name}`;
+    const { data, error } = await supabase.storage.from('avatars').upload(path, f, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const url = supabase.storage.from('avatars').getPublicUrl(data.path).publicURL;
+    avatar_preview.src = url; avatar_preview.classList.remove('hidden'); avatar_placeholder.classList.add('hidden');
+    // save avatar URL to metadata immediately
+    const meta = await getMetadata(); meta.metadata = meta.metadata || {}; meta.metadata.avatar_url = url; await saveMetadata(meta.metadata);
+  } catch (err) {
+    console.error('avatar upload', err); alert('Upload error: ' + (err.message||err));
+  }
+});
+
+// validation helpers
+function isAlphaOnlyMin2(val){ return /^[A-Za-z]{2,}(?:[\sA-Za-z]*)$/.test(val); }
+function isTenDigits(val){ return /^\d{10}$/.test(val); }
+
+// country codes list (small sample, can be expanded)
+const countryCodes = [
+  {code:'+91', country:'India'},
+  {code:'+1', country:'United States'},
+  {code:'+44', country:'United Kingdom'},
+  {code:'+61', country:'Australia'}
+];
+
+function populateCountryCodes(){ const sel = $('country_code'); sel.innerHTML=''; countryCodes.forEach(c=>{ const o=document.createElement('option'); o.value=c.code; o.textContent=`${c.code} (${c.country})`; sel.appendChild(o); }); }
+
+// simple pincode lookup cache (sample). You should replace/extend with real API or dataset.
+const pincodeCache = [
+  {country:'India', state:'Maharashtra', city:'Jaysingpur', pincode:'416101'},
+  {country:'India', state:'Maharashtra', city:'Kolhapur', pincode:'416001'}
+];
+
+async function tryPopulatePincode(){ try{
+  const country = $('country').value.trim(); const state = $('state').value.trim(); const city = $('city').value.trim();
+  if (!country || !state || !city) return;
+  const found = pincodeCache.find(p => p.country.toLowerCase()===country.toLowerCase() && p.state.toLowerCase()===state.toLowerCase() && p.city.toLowerCase()===city.toLowerCase());
+  if (found){ $('postal_code').value = found.pincode; }
+} catch(e){console.error(e);} }
+
+// wire auto pincode on change (debounced)
+let pinTimer;
+['country','state','city'].forEach(id=>{ document.getElementById(id).addEventListener('input', ()=>{ clearTimeout(pinTimer); pinTimer=setTimeout(tryPopulatePincode,700); }); });
+
+// Addresses list render and actions
+const addressesList = $('addressesList'); const addressFormWrap = $('addressFormWrap'); const addressForm = $('addressForm'); const btn_add_address = $('btn_add_address'); const addrStatus = $('addrStatus'); let editingAddressIndex = -1;
+
+function renderAddresses(addresses){ addressesList.innerHTML=''; if(!addresses||addresses.length===0){ addressesList.innerHTML='<div class="muted">No addresses saved yet.</div>'; return; } addresses.forEach((a,idx)=>{ const div=document.createElement('div'); div.className='address-card'; div.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:start"><div><div style="font-weight:600">${a.label||'Address'} ${a.is_default?'<span style="color:var(--accent);font-weight:700"> (Default)</span>':''}</div><div class="meta">${a.line||''}</div><div class="small muted">${a.city||''}, ${a.state||''} - ${a.pin||''}</div><div class="small muted">Phone: ${a.phone||''}</div></div><div style="display:flex;flex-direction:column;gap:8px"><button class="ghost" data-idx="${idx}" data-action="edit">Edit</button><button class="ghost" data-idx="${idx}" data-action="delete">Delete</button><button class="ghost" data-idx="${idx}" data-action="make_default">Make default</button></div></div>`; addressesList.appendChild(div); }); addressesList.querySelectorAll('button').forEach(btn=>{ btn.addEventListener('click', ()=>{ const idx=parseInt(btn.dataset.idx,10); const action=btn.dataset.action; handleAddressAction(idx,action); }); }); }
+
+function handleAddressAction(index,action){ getMetadata().then(meta=>{ const addresses=Array.isArray(meta.metadata?.addresses)?meta.metadata.addresses:[]; if(action==='edit'){ const a=addresses[index]; editingAddressIndex=index; addressFormWrap.classList.remove('hidden'); $('addressFormTitle').innerText='Edit address'; $('addr_label').value=a.label||''; $('addr_phone').value=a.phone||''; $('addr_line').value=a.line||''; $('addr_city').value=a.city||''; $('addr_state').value=a.state||''; $('addr_pincode').value=a.pin||''; $('addr_country').value=a.country||''; } else if(action==='delete'){ if(!confirm('Delete this address?')) return; addresses.splice(index,1); saveMetadata({...meta.metadata, addresses}).then(()=>renderAddresses(addresses)); } else if(action==='make_default'){ addresses.forEach((it,i)=> it.is_default=(i===index)); saveMetadata({...meta.metadata, addresses}).then(()=>renderAddresses(addresses)); } }); }
+
+btn_add_address.addEventListener('click', ()=>{ editingAddressIndex=-1; addressFormWrap.classList.remove('hidden'); $('addressFormTitle').innerText='Add address'; addressForm.reset(); addrStatus.innerText=''; });
+$('addr_cancel').addEventListener('click', (e)=>{ e.preventDefault(); addressFormWrap.classList.add('hidden'); editingAddressIndex=-1; });
+
+addressForm.addEventListener('submit', async (e)=>{ e.preventDefault(); addrStatus.innerText='Saving...'; const metaObj = await getMetadata(); const addresses = Array.isArray(metaObj.metadata?.addresses)?metaObj.metadata.addresses:[]; const newAddr = { label: $('addr_label').value || 'Address', phone: $('addr_phone').value||'', line: $('addr_line').value||'', city: $('addr_city').value||'', state: $('addr_state').value||'', pin: $('addr_pincode').value||'', country: $('addr_country').value||'', is_default:false }; if(editingAddressIndex===-1){ addresses.push(newAddr); } else { addresses[editingAddressIndex]=newAddr; } try{ await saveMetadata({...metaObj.metadata, addresses}); addrStatus.innerText='Saved'; renderAddresses(addresses); addressFormWrap.classList.add('hidden'); } catch(err){ console.error(err); addrStatus.innerText='Error saving'; } });
+
+// metadata helpers
+async function getMetadata(){ const { data: userData } = await supabase.auth.getUser(); if(!userData?.user) throw new Error('Not signed in'); const uid=userData.user.id; const { data, error } = await supabase.from('customers').select('*').eq('id', uid).single(); if(error && error.code !== 'PGRST116') throw error; return data || {}; }
+
+function buildTopLevelFieldsFromUI(metadata){ const fn=$('first_name').value.trim(); const ln=$('last_name').value.trim(); const fullName=(fn+' '+ln).trim(); const addresses=Array.isArray(metadata?.addresses)?metadata.addresses:[]; const defaultAddr=addresses.find(a=>a.is_default)||addresses[0]||null; const addressLine=defaultAddr? (defaultAddr.line||'') : ''; return { fullName, addressLine }; }
+
+// saveMetadata - writes metadata plus top-level columns
+async function saveMetadata(metadata){ const { data: userData } = await supabase.auth.getUser(); if(!userData?.user) throw new Error('Not signed in'); const uid=userData.user.id; const { fullName, addressLine } = buildTopLevelFieldsFromUI(metadata||{}); const updates={ id: uid, email: userData.user.email, metadata: metadata, full_name: fullName || null, address: addressLine || null, phone: $('phone').value || null, country: $('country').value || null, state: $('state').value || null, city: $('city').value || null, postal_code: $('postal_code').value || null }; const { data, error } = await supabase.from('customers').upsert(updates, { returning: 'representation' }); if(error) throw error; return data; }
+
+// form submit with validation
+$('profileForm').addEventListener('submit', async (e)=>{ e.preventDefault(); // validation
+  const fn=$('first_name').value.trim(); const ln=$('last_name').value.trim(); const phoneVal=$('phone').value.trim(); let ok=true; if(!isAlphaOnlyMin2(fn)){ $('first_err').classList.remove('hidden'); ok=false; } else $('first_err').classList.add('hidden'); if(!isAlphaOnlyMin2(ln)){ $('last_err').classList.remove('hidden'); ok=false; } else $('last_err').classList.add('hidden'); if(!isTenDigits(phoneVal)){ $('phone_err').classList.remove('hidden'); ok=false; } else $('phone_err').classList.add('hidden'); if(!ok) return; $('profileStatus').innerText='Saving...'; try{ let metaObj={}; const existing = await getMetadata(); metaObj = existing.metadata || {}; metaObj.full_name = (fn+' '+ln).trim(); metaObj.last_name = ln; metaObj.alt_phone = $('alt_phone').value || ''; metaObj.gst = $('gst').value || ''; metaObj.notes = $('notes').value || ''; if(!metaObj.avatar_url && avatar_preview && !avatar_preview.classList.contains('hidden')) metaObj.avatar_url = avatar_preview.src; await saveMetadata(metaObj); const { data: fresh } = await supabase.from('customers').select('*').eq('id', (await supabase.auth.getUser()).data.user.id).single(); if(fresh) { $('profileStatus').innerText='Saved'; if(fresh.metadata && fresh.metadata.avatar_url){ avatar_preview.src = fresh.metadata.avatar_url; avatar_preview.classList.remove('hidden'); avatar_placeholder.classList.add('hidden'); } } } catch(err){ console.error(err); $('profileStatus').innerText = 'Error saving profile: ' + (err.message || JSON.stringify(err)); } });
+
+// reset
+$('btn_cancel').addEventListener('click', ()=> loadProfileToUI());
+
+// load profile
+async function loadProfileToUI(){ try{ const user = (await supabase.auth.getUser()).data.user; if(!user) return window.location.href='/login.html'; $('loginStatus').innerText = `Signed in as ${user.email}`; $('userEmail').innerText = user.email; populateCountryCodes(); const row = await supabase.from('customers').select('*').eq('id', user.id).single(); if(row.error && row.error.code !== 'PGRST116'){ console.error(row.error); return; } let data = row.data; if(!data){ await supabase.from('customers').insert({ id: user.id, email: user.email }); const re = await supabase.from('customers').select('*').eq('id', user.id).single(); data = re.data; }
+  const meta = data.metadata || {};
+  const names = (meta.full_name || data.full_name || '').split(' ');
+  $('first_name').value = names.shift() || ''; $('last_name').value = names.join(' ') || (meta.last_name || ''); $('phone').value = data.phone || (meta.phone || ''); $('alt_phone').value = meta.alt_phone || ''; $('country').value = data.country || meta.country || ''; $('state').value = data.state || meta.state || ''; $('city').value = data.city || meta.city || ''; $('postal_code').value = data.postal_code || meta.postal_code || ''; $('gst').value = meta.gst || ''; $('notes').value = meta.notes || '';
+  if(meta.avatar_url){ avatar_preview.src = meta.avatar_url; avatar_preview.classList.remove('hidden'); avatar_placeholder.classList.add('hidden'); } else { avatar_preview.classList.add('hidden'); avatar_placeholder.classList.remove('hidden'); }
+  const addresses = Array.isArray(meta.addresses)?meta.addresses:[]; renderAddresses(addresses);
+} catch(e){ console.error(e); } }
+
+// sign in listener
+supabase.auth.onAuthStateChange((_event,_session)=>{ loadProfileToUI(); });
+
+// initial
+(async()=>{ populateCountryCodes(); const user = (await supabase.auth.getUser()).data.user; if(!user) return window.location.href='/login.html'; loadProfileToUI(); })();
+
+// phone input: restrict to digits and max 10
+$('phone').addEventListener('input', (e)=>{ e.target.value = e.target.value.replace(/[^0-9]/g,'').slice(0,10); });
+$('addr_phone').addEventListener('input', (e)=>{ e.target.value = e.target.value.replace(/[^0-9]/g,'').slice(0,10); });
+
+// helper to expose supabase in console if needed
+window.loadSupabaseConsole = async ()=>{ window.supabase = (await import('/assets/js/supabase_client.js')).supabase; console.log('supabase available'); };
+
+</script>
+</body>
+</html>
