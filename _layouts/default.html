@@ -1,20 +1,42 @@
-<!-- _layouts/default.html -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{% if page.title %}{{ page.title }} — {% endif %}ReliableStore</title>
-  <link rel="stylesheet" href="/assets/css/site.css" />
+  <title>{{ page.title | default: site.title }}</title>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/assets/styles.css" />
+
+  <!-- Small site meta -->
+  <meta name="theme-color" content="#FE9900" />
 </head>
 <body>
   {% include header.html %}
-  <main id="page-content">
+
+  <main>
     {{ content }}
   </main>
 
-  {% if page.scripts %}
-    {{ page.scripts | raw }}
-  {% endif %}
+  {% include footer.html %}
+
+  <!-- lightweight page behaviour -->
+  <script>
+    // sticky header shadow on scroll
+    (function(){
+      const bar = document.querySelector('.site-topbar');
+      if (!bar) return;
+      const onScroll = () => {
+        if (window.scrollY > 12) bar.classList.add('scrolled');
+        else bar.classList.remove('scrolled');
+      };
+      document.addEventListener('scroll', onScroll, {passive:true});
+      onScroll();
+    })();
+  </script>
 </body>
 </html>
