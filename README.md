@@ -20,3 +20,32 @@ reverted contact form
 minor updations in contact form
 updated
  
+README - ReliableStore (deployment checklist)
+
+1. Replace Supabase keys
+   - Edit assets/js/supabase_client.js
+   - Set SUPABASE_URL and SUPABASE_ANON_KEY (public anon key).
+
+2. Images & icons
+   - Add /assets/icons/header-logo.png
+   - Add product images under /assets/images/p1.jpg, p2.jpg, p3.jpg
+   - Add CSS at /assets/css/site.css if you want global styles.
+
+3. Supabase setup (recommended)
+   - Create `customers` table with columns from our earlier conversation (id UUID pk, email, phone, full_name, address, country, state, city, postal_code, metadata JSONB).
+   - Add RLS policies we discussed so clients can upsert their own row (see earlier SQL).
+   - Create Storage bucket `avatars` (optional) for profile pictures.
+
+4. Upload files to GitHub
+   - Commit and push all files to your GitHub Pages branch (main or gh-pages).
+   - Wait a minute and visit https://<your-user>.github.io/<repo>/ or your custom domain.
+
+5. Test flow
+   - Open site, add product(s), go to cart, play with quantities.
+   - Click Login from product or cart; sign up or sign in — you should return to the same page via returnTo param.
+   - Visit profile.html to edit profile and upload avatar.
+
+6. Troubleshooting
+   - If header doesn't appear, view page source and confirm script:
+     <script type="module" src="/assets/js/site_header.js"></script>
+   - Ensure supabase_client.js contains correct URL & anon key.
