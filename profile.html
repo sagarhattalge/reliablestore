@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ReliableStore — Profile</title>
+  <style> body{font-family:system-ui;padding:20px;max-width:700px;margin:30px auto;} </style>
+</head>
+<body>
+  <h1>Your Account</h1>
+  <div id="userbox">Loading...</div>
+  <p>
+    <button id="btn_logout">Sign out</button>
+    <a href="/login.html">Back to login</a>
+  </p>
+
+  <script type="module">
+    import { supabase } from '/assets/js/supabase_client.js'
+
+    const el = id => document.getElementById(id)
+    const userbox = el('userbox')
+
+    async function showUser() {
+      const { data, error } = await supabase.auth.getUser()
+      if (error) {
+        userbox.innerText = 'Error reading user: ' + error.message
+        return
+      }
+      const user = data.user
+      if (!user) {
+        // not signed in
+        userbox.innerHTML = '<strong>Not signed in.</strong><br>Please sign in on <a href="/login.html">login page</a>.'
+        return
+      }
+      // show safe user data
+      userbox.innerHTML = `
+        <p><strong>ID:</strong> ${user.id}</p>
+        <p><strong>Email:</strong> ${user.email}</p>
+        <p><strong>Created:</strong> ${new Date(user.created_at).toLocaleString()}</p>
+      `
+    }
+
+    el('btn_logout').addEventListener('click', async () => {
+      await supabase.auth.signOut()
+      window.location.href = '/login.html'
+    })
+
+    // show on page load
+    showUser()
+
+    // update if auth state changes
+    supabase.auth.onAuthStateChange((_event, _session) => {
+      showUser()
+    })
+  </script>
+</body>
+</html>
