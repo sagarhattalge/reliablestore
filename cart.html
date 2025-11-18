@@ -1,0 +1,169 @@
+<!-- cart.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Cart — ReliableStore</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:Inter,system-ui;padding:18px;background:#f6f7fb}
+    .wrap{max-width:980px;margin:0 auto}
+    .card{background:#fff;padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(10,10,15,0.06)}
+    .row{display:flex;gap:12px;align-items:center}
+    .item{display:flex;gap:12px;padding:12px;border-bottom:1px solid #f0f0f0;align-items:center}
+    .img{width:80px;height:80px;object-fit:cover;border-radius:8px}
+    .qty{display:flex;gap:6px;align-items:center}
+    .qty input{width:56px;padding:6px;text-align:center;border-radius:6px;border:1px solid #ddd}
+    .btn{padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    .total{font-weight:700;font-size:18px}
+    .empty{padding:30px;text-align:center;color:#666}
+    .checkout{background:#FE9900;color:#fff;padding:10px 16px;border-radius:10px;border:0;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2>Your cart</h2>
+      <div id="cartItems"></div>
+      <div id="cartEmpty" class="empty hidden">Your cart is empty</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+        <div class="total">Total: ₹<span id="cart_total">0.00</span></div>
+        <div>
+          <button id="btn_continue" class="btn">Continue shopping</button>
+          <button id="btn_checkout" class="checkout">Checkout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from '/assets/js/supabase_client.js';
+    // helper to read/write cart
+    const CART_KEY = 'rs_cart_v1';
+    function readCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY) || '{}'); }catch(e){ return {}; } }
+    function writeCart(cart){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); window.dispatchEvent(new Event('storage')); }
+
+    function formatPrice(n){ return Number(n||0).toFixed(2); }
+
+    function renderCart() {
+      const cart = readCart();
+      const ids = Object.keys(cart);
+      const container = document.getElementById('cartItems');
+      container.innerHTML = '';
+      if (ids.length === 0) {
+        document.getElementById('cartEmpty').classList.remove('hidden');
+        document.getElementById('cart_total').innerText = '0.00';
+        return;
+      } else {
+        document.getElementById('cartEmpty').classList.add('hidden');
+      }
+
+      let total = 0;
+      ids.forEach(id => {
+        const p = cart[id];
+        const subtotal = (p.price||0) * (p.qty||0);
+        total += subtotal;
+
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.innerHTML = `
+          <img class="img" src="${p.image || '/assets/icons/header-logo.png'}" alt="${p.title||''}" />
+          <div style="flex:1">
+            <div style="font-weight:600">${p.title || ''}</div>
+            <div style="color:#666">₹${formatPrice(p.price)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            <div class="qty">
+              <button class="btn btn-minus" data-id="${id}">−</button>
+              <input class="qty-input" data-id="${id}" value="${p.qty}" />
+              <button class="btn btn-plus" data-id="${id}">+</button>
+            </div>
+            <div>₹<span class="item-subtotal" data-id="${id}">${formatPrice(subtotal)}</span></div>
+            <button class="btn btn-remove" data-id="${id}">Remove</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+
+      document.getElementById('cart_total').innerText = formatPrice(total);
+
+      // attach events
+      document.querySelectorAll('.btn-plus').forEach(b => b.addEventListener('click', (e)=> {
+        const id = b.dataset.id;
+        changeQty(id, 1);
+      }));
+      document.querySelectorAll('.btn-minus').forEach(b => b.addEventListener('click', (e)=> {
+        const id = b.dataset.id;
+        changeQty(id, -1);
+      }));
+      document.querySelectorAll('.btn-remove').forEach(b => b.addEventListener('click', (e)=> {
+        const id = b.dataset.id;
+        removeItem(id);
+      }));
+      document.querySelectorAll('.qty-input').forEach(inp=>{
+        inp.addEventListener('input', (e)=>{
+          // numbers only
+          inp.value = inp.value.replace(/[^0-9]/g,'');
+        });
+        inp.addEventListener('change', (e)=>{
+          const id = inp.dataset.id;
+          const v = parseInt(inp.value || '0', 10);
+          setQty(id, isNaN(v)?0:v);
+        });
+      });
+    }
+
+    function changeQty(id, delta){
+      const cart = readCart();
+      if (!cart[id]) return;
+      cart[id].qty = (cart[id].qty || 0) + delta;
+      if (cart[id].qty <= 0) {
+        delete cart[id];
+      }
+      writeCart(cart);
+      renderCart();
+    }
+
+    function setQty(id, qty){
+      const cart = readCart();
+      if (qty <= 0) {
+        delete cart[id];
+      } else {
+        cart[id] = cart[id] || { id, title:'Unknown', price:0, qty:0 };
+        cart[id].qty = qty;
+      }
+      writeCart(cart);
+      renderCart();
+    }
+
+    function removeItem(id){
+      const cart = readCart();
+      delete cart[id];
+      writeCart(cart);
+      renderCart();
+    }
+
+    document.getElementById('btn_continue').addEventListener('click', ()=> window.location.href = '/');
+
+    document.getElementById('btn_checkout').addEventListener('click', async ()=>{
+      // For now we just require login. You can expand to create order rows in Supabase or integrate payment gateway.
+      const { data } = await supabase.auth.getUser();
+      if (!data?.user) {
+        // redirect to login and preserve current page
+        const returnTo = encodeURIComponent(window.location.pathname);
+        window.location.href = '/login.html?returnTo=' + returnTo;
+        return;
+      }
+      alert('Proceed to checkout (integration TBD). You are signed in as ' + data.user.email);
+    });
+
+    // initial render
+    renderCart();
+
+    // respond to storage changes (update cart count in header, etc.)
+    window.addEventListener('storage', renderCart);
+  </script>
+
+  <script type="module" src="/assets/js/site_header.js"></script>
+</body>
+</html>
