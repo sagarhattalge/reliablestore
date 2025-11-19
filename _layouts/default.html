@@ -1,18 +1,13 @@
+<!-- _layouts/default.html -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{{ page.title | default: site.title }}</title>
-
-  <!-- Favicons -->
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
-
-  <!-- Styles -->
   <link rel="stylesheet" href="/assets/css/styles.css" />
-
-  <!-- Small site meta -->
   <meta name="theme-color" content="#FE9900" />
 </head>
 <body>
@@ -38,6 +33,9 @@
       onScroll();
     })();
   </script>
+
+  <!-- Supabase client + header behaviour -->
+  <script type="module" src="/assets/js/supabase_client.js"></script>
   <script type="module" src="/assets/js/site_header.js"></script>
 </body>
 </html>
