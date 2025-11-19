@@ -17,14 +17,12 @@ function setCartCount(n){
 function readCart(){ try { return JSON.parse(localStorage.getItem('rs_cart_v1')||'{}'); }catch(e){return{}} }
 function cartTotalCount(){ const c = readCart(); return Object.values(c).reduce((s,i)=> s + (i.qty||0), 0); }
 
-/* ---------- modal control ---------- */
+/* ---------- modal control helpers ---------- */
 function openModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.remove('hidden'); m.setAttribute('aria-hidden','false'); }
 function closeModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.add('hidden'); m.setAttribute('aria-hidden','true'); }
 function showStep(id){ $all('.rs-step').forEach(s=> s.classList.add('hidden')); const el = $('#'+id); if(el) el.classList.remove('hidden'); }
 
-/* ---------- UI wiring and Supabase logic ---------- */
-/* Note: we avoid relying solely on customers table existence.
-   We will show password prompt when uncertain, and allow switching to signup. */
+/* ---------- Supabase helpers ---------- */
 async function checkExistingByEmail(email){
   try {
     const { data, error } = await supabase.from('customers').select('id,email').eq('email', email).limit(1).maybeSingle();
@@ -35,185 +33,177 @@ async function checkExistingByEmail(email){
     return null;
   }
 }
-
 async function signInWithPassword(email, password){
-  try {
-    const res = await supabase.auth.signInWithPassword({ email, password });
-    return res;
-  } catch(e){
-    return { error: e };
-  }
+  try { return await supabase.auth.signInWithPassword({ email, password }); } catch(e){ return { error: e }; }
 }
-
 async function signUpWithEmail(email, password, metadata = {}){
-  try {
-    const res = await supabase.auth.signUp({ email, password, options: { data: metadata }});
-    return res;
-  } catch(e){
-    return { error: e };
-  }
+  try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); } catch(e){ return { error: e }; }
 }
 
-/* ---------- attach modal handlers ---------- */
-function setupAuthModal(){
-  // elements
+/* ---------- Core modal logic (non-capture handlers) ---------- */
+function setupAuthModalInternal(){
   const toggle = document.getElementById('rs-header-login-toggle');
-  const modal = document.getElementById('rs-auth-modal');
-  if (!toggle || !modal) return;
-
-  const identifierInput = document.getElementById('rs-identifier');
-  const identifierNext = document.getElementById('rs-identifier-next');
-  const identifierError = document.getElementById('rs-identifier-error');
-
-  const knownEmailText = document.getElementById('rs-known-email');
-  const passwordInput = document.getElementById('rs-password');
-  const signinBtn = document.getElementById('rs-signin-btn');
-  const passwordError = document.getElementById('rs-password-error');
+  const closeBtns = $all('[data-rs-close]');
   const backToEnter = document.getElementById('rs-back-to-enter');
   const goSignup = document.getElementById('rs-go-signup');
-
-  const signupEmail = document.getElementById('rs-signup-email');
-  const signupName = document.getElementById('rs-signup-name');
-  const signupPassword = document.getElementById('rs-signup-password');
-  const signupBtn = document.getElementById('rs-signup-btn');
-  const signupError = document.getElementById('rs-signup-error');
   const cancelSignup = document.getElementById('rs-cancel-signup');
 
-  const closeBtns = $all('[data-rs-close]');
-
-  // open modal
-  toggle.addEventListener('click', (e) => {
-    e.preventDefault();
-    showStep('rs-step-enter');
-    identifierInput.value = '';
-    identifierError.textContent = '';
-    openModal();
-    setTimeout(()=> identifierInput.focus(), 120);
+  // click on close/backdrop buttons
+  closeBtns.forEach(b => {
+    b.removeEventListener('click', closeModal); // safe remove
+    b.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
   });
 
-  // close modal from close buttons/backdrop
-  closeBtns.forEach(b => b.addEventListener('click', (e) => {
-    e.preventDefault();
-    closeModal();
-  }));
+  if (backToEnter) {
+    backToEnter.removeEventListener('click', () => {});
+    backToEnter.addEventListener('click', (e) => { e.preventDefault(); showStep('rs-step-enter'); });
+  }
 
-  // back to enter
-  if (backToEnter) backToEnter.addEventListener('click', (e) => { e.preventDefault(); showStep('rs-step-enter'); });
-
-  // identifier step (email or phone) - we will prefer password flow first to match auth users
-  identifierNext.addEventListener('click', async (e) => {
-    e.preventDefault();
-    identifierError.textContent = '';
-    const raw = (identifierInput.value || '').trim();
-    if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
-
-    // If user enters phone digits -> attempt phone lookup (customers table). If found, go to password for that email.
-    if (/^\d{10,}$/.test(raw)) {
-      try {
-        const { data, error } = await supabase.from('customers').select('id,email,phone').eq('phone', raw).limit(1).maybeSingle();
-        if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
-        if (data && data.email) {
-          knownEmailText.textContent = data.email;
-        } else {
-          // Unknown phone - still show password prompt but prefill knownEmailText with the phone (will attempt login via email won't work)
-          knownEmailText.textContent = raw;
-        }
-        showStep('rs-step-password');
-        passwordInput.value = '';
-        return;
-      } catch(err) {
-        console.warn('phone check exception', err);
-        identifierError.textContent = 'Unable to check right now';
-        return;
-      }
-    }
-
-    // treat as email
-    const email = raw;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
-
-    // try to detect existence in customers table — but regardless of result we show password prompt first (safer)
-    identifierNext.disabled = true;
-    const exists = await checkExistingByEmail(email);
-    identifierNext.disabled = false;
-
-    // show password step and prefill the email for user to enter password.
-    knownEmailText.textContent = email;
-    showStep('rs-step-password');
-    passwordInput.value = '';
-    passwordError.textContent = '';
-
-    // If customers table returned true, that's confirmation; if false or null we still show password to let auth handle it.
-  });
-
-  // signin button
-  signinBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    passwordError.textContent = '';
-    const email = (knownEmailText.textContent || '').trim();
-    const pw = (passwordInput.value || '').trim();
-    if (!email || !pw) { passwordError.textContent = 'Enter your password'; return; }
-    signinBtn.disabled = true;
-    const res = await signInWithPassword(email, pw);
-    signinBtn.disabled = false;
-    if (res.error) {
-      console.warn('signIn error', res.error);
-      passwordError.textContent = res.error.message || 'Sign in failed';
-      return;
-    }
-    // success: redirect to returnTo
-    closeModal();
-    const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-    window.location.href = decodeURIComponent(rt || '/');
-  });
-
-  // "Create account" from password step - opens signup step with email prefilled
   if (goSignup) {
+    goSignup.removeEventListener('click', () => {});
     goSignup.addEventListener('click', (e) => {
       e.preventDefault();
-      signupEmail.value = (knownEmailText.textContent || '').trim();
-      signupName.value = '';
-      signupPassword.value = '';
+      const signupEmail = document.getElementById('rs-signup-email');
+      signupEmail.value = (document.getElementById('rs-known-email').textContent || '').trim();
+      document.getElementById('rs-signup-name').value = '';
+      document.getElementById('rs-signup-password').value = '';
       showStep('rs-step-signup');
-      signupPassword.focus();
+      try { document.getElementById('rs-signup-password').focus(); } catch(e){}
     });
   }
 
-  // signup button
-  signupBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    signupError.textContent = '';
-    const email = (signupEmail.value || '').trim();
-    const name = (signupName.value || '').trim();
-    const pw = (signupPassword.value || '').trim();
-    if (!email || !name || !pw) { signupError.textContent = 'Fill name, email and password'; return; }
-    if (pw.length < 6) { signupError.textContent = 'Password must be at least 6 characters'; return; }
+  if (cancelSignup) {
+    cancelSignup.removeEventListener('click', () => {});
+    cancelSignup.addEventListener('click', (e) => { e.preventDefault(); showStep('rs-step-enter'); });
+  }
 
-    signupBtn.disabled = true;
-    const res = await signUpWithEmail(email, pw, { full_name: name });
-    signupBtn.disabled = false;
-    if (res.error) {
-      console.warn('signup error', res.error);
-      signupError.textContent = res.error.message || 'Signup failed';
+  // wire signin and signup buttons (non-capture)
+  const signinBtn = document.getElementById('rs-signin-btn');
+  if (signinBtn) {
+    signinBtn.removeEventListener('click', () => {});
+    signinBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = (document.getElementById('rs-known-email').textContent || '').trim();
+      const pw = (document.getElementById('rs-password').value || '').trim();
+      const passwordError = document.getElementById('rs-password-error');
+      passwordError.textContent = '';
+      if (!email || !pw) { passwordError.textContent = 'Enter your password'; return; }
+      signinBtn.disabled = true;
+      const res = await signInWithPassword(email, pw);
+      signinBtn.disabled = false;
+      if (res.error) {
+        console.warn('signIn error', res.error);
+        passwordError.textContent = res.error.message || 'Sign in failed';
+        return;
+      }
+      closeModal();
+      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+      window.location.href = decodeURIComponent(rt || '/');
+    });
+  }
+
+  const signupBtn = document.getElementById('rs-signup-btn');
+  if (signupBtn) {
+    signupBtn.removeEventListener('click', () => {});
+    signupBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const signupEmail = (document.getElementById('rs-signup-email').value || '').trim();
+      const signupName = (document.getElementById('rs-signup-name').value || '').trim();
+      const signupPassword = (document.getElementById('rs-signup-password').value || '').trim();
+      const signupError = document.getElementById('rs-signup-error');
+      signupError.textContent = '';
+      if (!signupEmail || !signupName || !signupPassword) { signupError.textContent = 'Fill name, email and password'; return; }
+      if (signupPassword.length < 6) { signupError.textContent = 'Password must be at least 6 characters'; return; }
+      signupBtn.disabled = true;
+      const res = await signUpWithEmail(signupEmail, signupPassword, { full_name: signupName });
+      signupBtn.disabled = false;
+      if (res.error) {
+        console.warn('signup error', res.error);
+        signupError.textContent = res.error.message || 'Signup failed';
+        return;
+      }
+      closeModal();
+      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+      window.location.href = decodeURIComponent(rt || '/');
+    });
+  }
+}
+
+/* ---------- Capture-phase interceptor (HIGH PRIORITY) ---------- */
+/* This listener runs in capture phase (true), so it executes before other handlers.
+   It handles toggling the modal and the identifier "Continue" button in a way that
+   is robust to passive/bubbled listeners. */
+function setupCaptureInterceptor(){
+  document.addEventListener('click', async function captureHandler(e){
+    // look for the closest relevant targets
+    const toggle = e.target.closest('#rs-header-login-toggle, [data-rs-toggle-login-signup], .login-link');
+    if (toggle) {
+      // open modal and focus input
+      try { e.preventDefault(); } catch(err) {}
+      showStep('rs-step-enter');
+      const identifierInput = document.getElementById('rs-identifier');
+      if (identifierInput) identifierInput.value = '';
+      openModal();
+      try { setTimeout(()=> identifierInput && identifierInput.focus(), 120); } catch(e){}
+      return; // handled
+    }
+
+    const idNext = e.target.closest('#rs-identifier-next');
+    if (idNext) {
+      try { e.preventDefault(); } catch(err) {}
+      // run the identifier logic here (capture-phase)
+      const identifierInput = document.getElementById('rs-identifier');
+      const identifierError = document.getElementById('rs-identifier-error');
+      const knownEmailText = document.getElementById('rs-known-email');
+      const passwordInput = document.getElementById('rs-password');
+      if (!identifierInput) return;
+      identifierError.textContent = '';
+      const raw = (identifierInput.value || '').trim();
+      if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
+
+      // phone case
+      if (/^\d{10,}$/.test(raw)) {
+        try {
+          const { data, error } = await supabase.from('customers').select('id,email,phone').eq('phone', raw).limit(1).maybeSingle();
+          if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
+          if (data && data.email) knownEmailText.textContent = data.email;
+          else knownEmailText.textContent = raw;
+          showStep('rs-step-password'); passwordInput.value = ''; return;
+        } catch(err) { console.warn('phone check exception', err); identifierError.textContent = 'Unable to check right now'; return; }
+      }
+
+      // email case
+      const email = raw;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
+
+      // Show password prompt (we don't rely solely on customers table)
+      identifierError.textContent = '';
+      try {
+        const exists = await checkExistingByEmail(email);
+        (document.getElementById('rs-known-email') || {textContent:''}).textContent = email;
+        showStep('rs-step-password');
+        (document.getElementById('rs-password') || {value:''}).value = '';
+      } catch(err) {
+        console.warn('identifier processing error', err);
+        identifierError.textContent = 'Unable to continue right now';
+      }
       return;
     }
 
-    // Signed up successfully
-    closeModal();
-    const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-    window.location.href = decodeURIComponent(rt || '/');
-  });
+    // If click inside modal backdrop (close)
+    const closeTarget = e.target.closest('[data-rs-close]');
+    if (closeTarget) {
+      try { e.preventDefault(); } catch(err){}
+      closeModal();
+      return;
+    }
 
-  // cancel signup/back
-  if (cancelSignup) cancelSignup.addEventListener('click', (e)=> { e.preventDefault(); showStep('rs-step-enter'); });
-
-  // close on ESC
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-  });
+    // If click on 'Sign in' or 'Create account' buttons let normal handlers run (they're wired non-capture).
+    // We don't intercept those here.
+  }, true); // capture = true
 }
 
-/* ---------- attach generic behavior (cart + auth state + logout) ---------- */
+/* ---------- Auth state UI and logout ---------- */
 function setupAuthStateUI(){
   const toggle = document.getElementById('rs-header-login-toggle');
   const logoutBtn = document.getElementById('rs-logout-btn');
@@ -229,42 +219,30 @@ function setupAuthStateUI(){
     }
   }
 
-  // sign out handler
   if (logoutBtn) {
+    logoutBtn.removeEventListener('click', () => {});
     logoutBtn.addEventListener('click', async () => {
-      try {
-        await supabase.auth.signOut();
-      } catch (e) {
-        console.warn('signOut error', e);
-      }
-      // show logout info then go home
+      try { await supabase.auth.signOut(); } catch (e) { console.warn('signOut error', e); }
       try { alert('You have been logged out.'); } catch(e){}
       window.location.href = '/';
     });
   }
 
-  // listen to auth changes
-  try {
-    supabase.auth.onAuthStateChange(() => update());
-  } catch(e) {
-    console.warn('onAuthStateChange not available', e);
-  }
-  // initial
+  try { supabase.auth.onAuthStateChange(() => update()); } catch(e) { console.warn('onAuthStateChange not available', e); }
   update();
 }
 
-/* ---------- attach generic behavior (cart + initial wiring) ---------- */
+/* ---------- Initialization ---------- */
 export function renderHeaderExtras(){
-  // update cart
+  // cart count
   setCartCount(cartTotalCount());
   window.addEventListener('storage', ()=> setCartCount(cartTotalCount()));
 
-  // wire modal & toggle
-  try { setupAuthModal(); } catch (e) { console.warn('setupAuthModal error', e); }
-
-  // wire auth state and logout
-  try { setupAuthStateUI(); } catch (e) { console.warn('setupAuthStateUI error', e); }
+  // core wiring
+  try { setupAuthModalInternal(); } catch(e){ console.warn('setupAuthModalInternal error', e); }
+  try { setupCaptureInterceptor(); } catch(e){ console.warn('setupCaptureInterceptor error', e); }
+  try { setupAuthStateUI(); } catch(e){ console.warn('setupAuthStateUI error', e); }
 }
 
-/* ---------- auto-run on import ---------- */
+/* Auto-run */
 try { renderHeaderExtras(); } catch(e){ console.warn('renderHeaderExtras error', e); }
