@@ -12,11 +12,72 @@
     </nav>
 
     <div class="header-actions">
-      <!-- Option B: toggle button (deterministic via data attribute) -->
-      <button class="btn-link login-link" data-rs-toggle-login-signup>Login / Sign Up</button>
+      <!-- header login toggle (opens modal) -->
+      <button id="rs-header-login-toggle" class="btn-link login-link">Login / Sign Up</button>
 
-      <!-- Cart remains an anchor so it can be indexed, etc. -->
+      <!-- Cart remains the same -->
       <a href="/cart.html" class="cart">Cart <span id="cart-count">0</span></a>
     </div>
   </div>
+
+  <!-- Modal HTML (kept here so it's present on every page) -->
+  <div id="rs-auth-modal" class="rs-modal hidden" aria-hidden="true" role="dialog" aria-labelledby="rs-auth-title">
+    <div class="rs-modal-backdrop" data-rs-close></div>
+    <div class="rs-modal-panel" role="document" aria-modal="true">
+      <button class="rs-modal-close" data-rs-close aria-label="Close">×</button>
+
+      <!-- Step A: ask for email or phone -->
+      <div id="rs-step-enter" class="rs-step">
+        <h3 id="rs-auth-title">Sign in or create account</h3>
+        <p class="muted">Enter your mobile number or email</p>
+        <input id="rs-identifier" type="text" placeholder="Email or mobile number" aria-label="Email or mobile" />
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="rs-identifier-next" class="rs-btn">Continue</button>
+          <button class="rs-btn ghost" data-rs-close>Cancel</button>
+        </div>
+        <div id="rs-identifier-error" class="rs-error"></div>
+      </div>
+
+      <!-- Step B: existing user -> ask password -->
+      <div id="rs-step-password" class="rs-step hidden">
+        <h3>Sign in</h3>
+        <div id="rs-known-email" class="muted"></div>
+        <input id="rs-password" type="password" placeholder="Password" aria-label="Password" />
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="rs-signin-btn" class="rs-btn">Sign in</button>
+          <button id="rs-back-to-enter" class="rs-btn ghost">Back</button>
+        </div>
+        <div id="rs-password-error" class="rs-error"></div>
+      </div>
+
+      <!-- Step C: new user -> signup form -->
+      <div id="rs-step-signup" class="rs-step hidden">
+        <h3>Create account</h3>
+        <input id="rs-signup-email" type="email" placeholder="Email" aria-label="Email" />
+        <input id="rs-signup-name" type="text" placeholder="Full name" aria-label="Full name" />
+        <input id="rs-signup-password" type="password" placeholder="Password (min 6 chars)" aria-label="Password" />
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="rs-signup-btn" class="rs-btn">Create account</button>
+          <button id="rs-cancel-signup" class="rs-btn ghost">Cancel</button>
+        </div>
+        <div id="rs-signup-error" class="rs-error"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* minimal modal styles - move to CSS if you prefer */
+    .hidden{display:none!important}
+    .rs-modal{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center}
+    .rs-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.45)}
+    .rs-modal-panel{position:relative;background:#fff;border-radius:10px;padding:18px;max-width:420px;width:94%;box-shadow:0 20px 50px rgba(0,0,0,0.3)}
+    .rs-modal-close{position:absolute;right:8px;top:6px;border:none;background:transparent;font-size:20px;cursor:pointer}
+    .rs-step{display:block}
+    .rs-step.hidden{display:none}
+    .rs-btn{background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer}
+    .rs-btn.ghost{background:#fff;border:1px solid #ddd;color:#333}
+    input[type="text"], input[type="email"], input[type="password"]{width:100%;padding:8px;margin:8px 0;border-radius:6px;border:1px solid #e6e9ef}
+    .muted{color:#666;font-size:0.95rem}
+    .rs-error{color:#b00020;margin-top:8px;font-size:0.9rem}
+  </style>
 </header>
