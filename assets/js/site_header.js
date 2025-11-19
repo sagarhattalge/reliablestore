@@ -162,81 +162,80 @@ function setupAuthModalInternal(){
   }
 }
 
-/* ---------- Capture-phase interceptor (HIGH PRIORITY) ---------- */
-function setupCaptureInterceptor(){
-  document.addEventListener('click', async function captureHandler(e){
-    // 1) toggle open
-    const toggle = e.target.closest('#rs-header-login-toggle, [data-rs-toggle-login-signup], .login-link');
-    if (toggle) {
-      try { e.preventDefault(); } catch(err){}
-      showStep('rs-step-enter');
-      const identifierInput = document.getElementById('rs-identifier');
-      if (identifierInput) identifierInput.value = '';
-      openModal();
-      try { setTimeout(()=> identifierInput && identifierInput.focus(), 120); } catch(e){}
-      return;
+/* ---------- Delegated, targeted handlers (safer than global capture) ---------- */
+function setupDelegatedHandlers(){
+  // Toggle (open modal)
+  const toggle = document.getElementById('rs-header-login-toggle');
+  if (toggle) {
+    // remove prior listener (if any) then add a single non-passive handler
+    try { toggle.replaceWith(toggle.cloneNode(true)); } catch(e){}
+    const newToggle = document.getElementById('rs-header-login-toggle');
+    if (newToggle) {
+      newToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        showStep('rs-step-enter');
+        const identifierInput = document.getElementById('rs-identifier');
+        if (identifierInput) identifierInput.value = '';
+        openModal();
+        try { setTimeout(()=> identifierInput && identifierInput.focus(), 120); } catch(e){}
+      });
     }
+  }
 
-    // 2) identifier continue
-    const idNext = e.target.closest('#rs-identifier-next');
-    if (idNext) {
-      try { e.preventDefault(); } catch(err){}
-      const identifierInput = document.getElementById('rs-identifier');
-      const identifierError = document.getElementById('rs-identifier-error');
-      const knownEmailText = document.getElementById('rs-known-email');
-      const passwordInput = document.getElementById('rs-password');
-      if (!identifierInput) return;
-      identifierError.textContent = '';
-      const raw = (identifierInput.value || '').trim();
-      if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
+  // Identifier Continue button
+  const idNext = document.getElementById('rs-identifier-next');
+  if (idNext) {
+    try { idNext.replaceWith(idNext.cloneNode(true)); } catch(e){}
+    const newIdNext = document.getElementById('rs-identifier-next');
+    if (newIdNext) {
+      newIdNext.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const identifierInput = document.getElementById('rs-identifier');
+        const identifierError = document.getElementById('rs-identifier-error');
+        const knownEmailText = document.getElementById('rs-known-email');
+        const passwordInput = document.getElementById('rs-password');
+        if (!identifierInput) return;
+        identifierError.textContent = '';
+        const raw = (identifierInput.value || '').trim();
+        if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // phone case
-      if (/^\d{10,}$/.test(raw)) {
-        try {
-          const { data, error } = await supabase.from('customers').select('id,email,phone').eq('phone', raw).limit(1).maybeSingle();
-          if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
-          if (data && data.email) knownEmailText.textContent = data.email;
-          else knownEmailText.textContent = raw;
-          // show only password step
-          showStep('rs-step-password');
-          passwordInput.value = '';
-          return;
-        } catch(err) {
-          console.warn('phone check exception', err);
-          identifierError.textContent = 'Unable to check right now';
-          return;
+        // phone case
+        if (/^\d{10,}$/.test(raw)) {
+          try {
+            const { data, error } = await supabase.from('customers').select('id,email,phone').eq('phone', raw).limit(1).maybeSingle();
+            if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
+            if (data && data.email) knownEmailText.textContent = data.email;
+            else knownEmailText.textContent = raw;
+            showStep('rs-step-password'); passwordInput.value = ''; return;
+          } catch(err) {
+            console.warn('phone check exception', err); identifierError.textContent = 'Unable to check right now'; return;
+          }
         }
-      }
 
-      // email case: basic validation
-      const email = raw;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
+        // email case
+        const email = raw;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
 
-      // do optional customers check but regardless show password prompt - this avoids mismatch when customers row missing
-      identifierError.textContent = '';
-      try {
-        const exists = await checkExistingByEmail(email);
-        (document.getElementById('rs-known-email') || {textContent:''}).textContent = email;
-        // always show only password step first; user can switch to create account explicitly
-        showStep('rs-step-password');
-        (document.getElementById('rs-password') || {value:''}).value = '';
-      } catch(err) {
-        console.warn('identifier processing error', err);
-        identifierError.textContent = 'Unable to continue right now';
-      }
-      return;
+        try {
+          const exists = await checkExistingByEmail(email);
+          (document.getElementById('rs-known-email') || {textContent:''}).textContent = email;
+          showStep('rs-step-password');
+          (document.getElementById('rs-password') || {value:''}).value = '';
+        } catch(err) {
+          console.warn('identifier processing error', err);
+          identifierError.textContent = 'Unable to continue right now';
+        }
+      });
     }
+  }
 
-    // 3) backdrop/close clicks
-    const closeTarget = e.target.closest('[data-rs-close]');
-    if (closeTarget) {
-      try { e.preventDefault(); } catch(err){}
-      closeModal();
-      return;
-    }
-
-    // Let other clicks pass through (signin/signup buttons handled by non-capture listeners)
-  }, true); // capture
+  // Backdrop / close buttons (delegate each; they already wired in setupAuthModalInternal but ensure a listener exists)
+  $all('[data-rs-close]').forEach(btn => {
+    // avoid duplicate by cloning if there's any doubt
+    try { btn.replaceWith(btn.cloneNode(true)); } catch(e){}
+    const fresh = document.querySelector(`[data-rs-close]`);
+    if (fresh) fresh.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
+  });
 }
 
 /* ---------- Auth state UI and logout ---------- */
@@ -272,4 +271,4 @@ export function renderHeaderExtras(){
 }
 
 /* Auto-run */
-try { renderHeaderExtras(); } catch(e){ console.warn('renderHeaderExtras error', e); }
+try { setupDelegatedHandlers(); } catch(e){ console.warn('setupDelegatedHandlers error', e); }
