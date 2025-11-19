@@ -23,15 +23,12 @@ function closeModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.a
 function showStep(id){ $all('.rs-step').forEach(s=> s.classList.add('hidden')); const el = $('#'+id); if(el) el.classList.remove('hidden'); }
 
 /* ---------- UI wiring and Supabase logic ---------- */
+/* Note: we avoid relying solely on customers table existence.
+   We will show password prompt when uncertain, and allow switching to signup. */
 async function checkExistingByEmail(email){
-  // Attempt to find user in customers table first (simple and fast)
   try {
     const { data, error } = await supabase.from('customers').select('id,email').eq('email', email).limit(1).maybeSingle();
-    if (error) {
-      // if customers table not accessible, fall back to trying to sign-in (we will rely on signIn errors)
-      console.warn('customers table check error:', error);
-      return null;
-    }
+    if (error) { console.warn('customers table check error:', error); return null; }
     return data ? true : false;
   } catch(err){
     console.warn('checkExistingByEmail exception', err);
@@ -73,6 +70,7 @@ function setupAuthModal(){
   const signinBtn = document.getElementById('rs-signin-btn');
   const passwordError = document.getElementById('rs-password-error');
   const backToEnter = document.getElementById('rs-back-to-enter');
+  const goSignup = document.getElementById('rs-go-signup');
 
   const signupEmail = document.getElementById('rs-signup-email');
   const signupName = document.getElementById('rs-signup-name');
@@ -102,35 +100,27 @@ function setupAuthModal(){
   // back to enter
   if (backToEnter) backToEnter.addEventListener('click', (e) => { e.preventDefault(); showStep('rs-step-enter'); });
 
-  // identifier step (email or phone)
+  // identifier step (email or phone) - we will prefer password flow first to match auth users
   identifierNext.addEventListener('click', async (e) => {
     e.preventDefault();
     identifierError.textContent = '';
     const raw = (identifierInput.value || '').trim();
     if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-    // quick normalization: if looks like phone (digits only)
-    let email = raw;
+    // If user enters phone digits -> attempt phone lookup (customers table). If found, go to password for that email.
     if (/^\d{10,}$/.test(raw)) {
-      // phone entered; attempt to find by phone in customers table
       try {
         const { data, error } = await supabase.from('customers').select('id,email,phone').eq('phone', raw).limit(1).maybeSingle();
         if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
         if (data && data.email) {
-          // treat as existing account
           knownEmailText.textContent = data.email;
-          showStep('rs-step-password');
-          passwordInput.value = '';
-          return;
         } else {
-          // no record; open signup step
-          signupEmail.value = '';
-          signupName.value = '';
-          signupPassword.value = '';
-          showStep('rs-step-signup');
-          signupEmail.focus();
-          return;
+          // Unknown phone - still show password prompt but prefill knownEmailText with the phone (will attempt login via email won't work)
+          knownEmailText.textContent = raw;
         }
+        showStep('rs-step-password');
+        passwordInput.value = '';
+        return;
       } catch(err) {
         console.warn('phone check exception', err);
         identifierError.textContent = 'Unable to check right now';
@@ -139,32 +129,21 @@ function setupAuthModal(){
     }
 
     // treat as email
+    const email = raw;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
 
-    // Check customers table for existing email
+    // try to detect existence in customers table — but regardless of result we show password prompt first (safer)
     identifierNext.disabled = true;
     const exists = await checkExistingByEmail(email);
     identifierNext.disabled = false;
 
-    if (exists === true) {
-      // existing -> show password view, display email
-      knownEmailText.textContent = email;
-      showStep('rs-step-password');
-      passwordInput.value = '';
-      passwordError.textContent = '';
-    } else if (exists === false) {
-      // new user -> show signup form and prefill email
-      signupEmail.value = email;
-      signupName.value = '';
-      signupPassword.value = '';
-      showStep('rs-step-signup');
-      signupPassword.focus();
-    } else {
-      // unknown (customers table not accessible) -> fallback to password prompt
-      knownEmailText.textContent = email;
-      showStep('rs-step-password');
-      passwordInput.value = '';
-    }
+    // show password step and prefill the email for user to enter password.
+    knownEmailText.textContent = email;
+    showStep('rs-step-password');
+    passwordInput.value = '';
+    passwordError.textContent = '';
+
+    // If customers table returned true, that's confirmation; if false or null we still show password to let auth handle it.
   }, { passive: true });
 
   // signin button
@@ -188,6 +167,18 @@ function setupAuthModal(){
     window.location.href = decodeURIComponent(rt || '/');
   }, { passive: true });
 
+  // "Create account" from password step - opens signup step with email prefilled
+  if (goSignup) {
+    goSignup.addEventListener('click', (e) => {
+      e.preventDefault();
+      signupEmail.value = (knownEmailText.textContent || '').trim();
+      signupName.value = '';
+      signupPassword.value = '';
+      showStep('rs-step-signup');
+      signupPassword.focus();
+    });
+  }
+
   // signup button
   signupBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -207,7 +198,7 @@ function setupAuthModal(){
       return;
     }
 
-    // Signed up successfully — depending on your Supabase email confirmation setting, either user is created or needs confirmation
+    // Signed up successfully
     closeModal();
     const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
     window.location.href = decodeURIComponent(rt || '/');
@@ -222,6 +213,46 @@ function setupAuthModal(){
   });
 }
 
+/* ---------- attach generic behavior (cart + auth state + logout) ---------- */
+function setupAuthStateUI(){
+  const toggle = document.getElementById('rs-header-login-toggle');
+  const logoutBtn = document.getElementById('rs-logout-btn');
+
+  async function update() {
+    try {
+      const { data } = await supabase.auth.getUser();
+      const loggedIn = !!data?.user;
+      if (toggle) toggle.classList.toggle('hidden', loggedIn);
+      if (logoutBtn) logoutBtn.classList.toggle('hidden', !loggedIn);
+    } catch(e) {
+      console.warn('auth getUser failed', e);
+    }
+  }
+
+  // sign out handler
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn('signOut error', e);
+      }
+      // show logout info then go home
+      try { alert('You have been logged out.'); } catch(e){}
+      window.location.href = '/';
+    });
+  }
+
+  // listen to auth changes
+  try {
+    supabase.auth.onAuthStateChange(() => update());
+  } catch(e) {
+    console.warn('onAuthStateChange not available', e);
+  }
+  // initial
+  update();
+}
+
 /* ---------- attach generic behavior (cart + initial wiring) ---------- */
 export function renderHeaderExtras(){
   // update cart
@@ -231,22 +262,8 @@ export function renderHeaderExtras(){
   // wire modal & toggle
   try { setupAuthModal(); } catch (e) { console.warn('setupAuthModal error', e); }
 
-  // hide login when logged in (simple)
-  try {
-    supabase.auth.onAuthStateChange(() => {
-      supabase.auth.getUser().then(({data}) => {
-        const loggedIn = !!data?.user;
-        const toggle = document.getElementById('rs-header-login-toggle');
-        if (toggle) toggle.classList.toggle('hidden', loggedIn);
-      });
-    });
-    // initial set
-    supabase.auth.getUser().then(({data}) => {
-      const loggedIn = !!data?.user;
-      const toggle = document.getElementById('rs-header-login-toggle');
-      if (toggle) toggle.classList.toggle('hidden', loggedIn);
-    });
-  } catch(e) { console.warn('auth state wiring failed', e); }
+  // wire auth state and logout
+  try { setupAuthStateUI(); } catch (e) { console.warn('setupAuthStateUI error', e); }
 }
 
 /* ---------- auto-run on import ---------- */
