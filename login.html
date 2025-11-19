@@ -1,3 +1,4 @@
+<!-- login.html -->
 <!doctype html>
 <html>
 <head>
@@ -43,16 +44,20 @@
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { status.textContent = error.message; return; }
+      if (error) {
+        status.textContent = error.message;
+        return;
+      }
+      // on success - redirect user back to original page
       window.location.href = returnTo;
     });
 
+    // if user already signed in, redirect back immediately
     (async ()=>{
       const { data } = await supabase.auth.getUser();
       if (data?.user) location.href = returnTo;
     })();
   </script>
-
   <script type="module" src="/assets/js/site_header.js"></script>
 </body>
 </html>
