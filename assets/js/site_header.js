@@ -20,7 +20,12 @@ function cartTotalCount(){ const c = readCart(); return Object.values(c).reduce(
 /* ---------- modal control helpers ---------- */
 function openModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.remove('hidden'); m.setAttribute('aria-hidden','false'); }
 function closeModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.add('hidden'); m.setAttribute('aria-hidden','true'); }
-function showStep(id){ $all('.rs-step').forEach(s=> s.classList.add('hidden')); const el = $('#'+id); if(el) el.classList.remove('hidden'); }
+function showStep(id){
+  // hide all then show requested step - ensures only one visible
+  $all('.rs-step').forEach(s=> s.classList.add('hidden'));
+  const el = $('#'+id);
+  if (el) el.classList.remove('hidden');
+}
 
 /* ---------- Supabase helpers ---------- */
 async function checkExistingByEmail(email){
@@ -40,17 +45,33 @@ async function signUpWithEmail(email, password, metadata = {}){
   try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); } catch(e){ return { error: e }; }
 }
 
+/* ---------- Auth UI updater (call this after sign-in/signup/logout) ---------- */
+async function updateAuthUI(){
+  try {
+    const { data } = await supabase.auth.getUser();
+    const loggedIn = !!data?.user;
+    const toggle = document.getElementById('rs-header-login-toggle');
+    const logoutBtn = document.getElementById('rs-logout-btn');
+    if (toggle) toggle.classList.toggle('hidden', loggedIn);
+    if (logoutBtn) logoutBtn.classList.toggle('hidden', !loggedIn);
+    // if logged in, optionally show user's email somewhere later
+    return loggedIn;
+  } catch(e){
+    console.warn('updateAuthUI failed', e);
+    return false;
+  }
+}
+
 /* ---------- Core modal logic (non-capture handlers) ---------- */
 function setupAuthModalInternal(){
-  const toggle = document.getElementById('rs-header-login-toggle');
   const closeBtns = $all('[data-rs-close]');
   const backToEnter = document.getElementById('rs-back-to-enter');
   const goSignup = document.getElementById('rs-go-signup');
   const cancelSignup = document.getElementById('rs-cancel-signup');
 
-  // click on close/backdrop buttons
+  // close/back buttons
   closeBtns.forEach(b => {
-    b.removeEventListener('click', closeModal); // safe remove
+    b.removeEventListener('click', closeModal);
     b.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
   });
 
@@ -63,8 +84,8 @@ function setupAuthModalInternal(){
     goSignup.removeEventListener('click', () => {});
     goSignup.addEventListener('click', (e) => {
       e.preventDefault();
-      const signupEmail = document.getElementById('rs-signup-email');
-      signupEmail.value = (document.getElementById('rs-known-email').textContent || '').trim();
+      const known = (document.getElementById('rs-known-email') || {textContent:''}).textContent.trim();
+      document.getElementById('rs-signup-email').value = known || '';
       document.getElementById('rs-signup-name').value = '';
       document.getElementById('rs-signup-password').value = '';
       showStep('rs-step-signup');
@@ -77,7 +98,7 @@ function setupAuthModalInternal(){
     cancelSignup.addEventListener('click', (e) => { e.preventDefault(); showStep('rs-step-enter'); });
   }
 
-  // wire signin and signup buttons (non-capture)
+  // signin button
   const signinBtn = document.getElementById('rs-signin-btn');
   if (signinBtn) {
     signinBtn.removeEventListener('click', () => {});
@@ -88,20 +109,27 @@ function setupAuthModalInternal(){
       const passwordError = document.getElementById('rs-password-error');
       passwordError.textContent = '';
       if (!email || !pw) { passwordError.textContent = 'Enter your password'; return; }
+
       signinBtn.disabled = true;
       const res = await signInWithPassword(email, pw);
       signinBtn.disabled = false;
+
       if (res.error) {
         console.warn('signIn error', res.error);
         passwordError.textContent = res.error.message || 'Sign in failed';
         return;
       }
+
+      // success: update UI immediately and refresh page
       closeModal();
-      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-      window.location.href = decodeURIComponent(rt || '/');
+      await updateAuthUI();
+      // show quick feedback then reload so page content (if any) updates
+      try{ alert('Signed in successfully'); } catch(e){}
+      setTimeout(()=> window.location.reload(), 300);
     });
   }
 
+  // signup button
   const signupBtn = document.getElementById('rs-signup-btn');
   if (signupBtn) {
     signupBtn.removeEventListener('click', () => {});
@@ -114,44 +142,45 @@ function setupAuthModalInternal(){
       signupError.textContent = '';
       if (!signupEmail || !signupName || !signupPassword) { signupError.textContent = 'Fill name, email and password'; return; }
       if (signupPassword.length < 6) { signupError.textContent = 'Password must be at least 6 characters'; return; }
+
       signupBtn.disabled = true;
       const res = await signUpWithEmail(signupEmail, signupPassword, { full_name: signupName });
       signupBtn.disabled = false;
+
       if (res.error) {
         console.warn('signup error', res.error);
         signupError.textContent = res.error.message || 'Signup failed';
         return;
       }
+
+      // If sign-up requires email confirmation, tell user
       closeModal();
-      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-      window.location.href = decodeURIComponent(rt || '/');
+      try { alert('Account created. Please check your email to confirm (if required).'); } catch(e){}
+      await updateAuthUI();
+      setTimeout(()=> window.location.reload(), 500);
     });
   }
 }
 
 /* ---------- Capture-phase interceptor (HIGH PRIORITY) ---------- */
-/* This listener runs in capture phase (true), so it executes before other handlers.
-   It handles toggling the modal and the identifier "Continue" button in a way that
-   is robust to passive/bubbled listeners. */
 function setupCaptureInterceptor(){
   document.addEventListener('click', async function captureHandler(e){
-    // look for the closest relevant targets
+    // 1) toggle open
     const toggle = e.target.closest('#rs-header-login-toggle, [data-rs-toggle-login-signup], .login-link');
     if (toggle) {
-      // open modal and focus input
-      try { e.preventDefault(); } catch(err) {}
+      try { e.preventDefault(); } catch(err){}
       showStep('rs-step-enter');
       const identifierInput = document.getElementById('rs-identifier');
       if (identifierInput) identifierInput.value = '';
       openModal();
       try { setTimeout(()=> identifierInput && identifierInput.focus(), 120); } catch(e){}
-      return; // handled
+      return;
     }
 
+    // 2) identifier continue
     const idNext = e.target.closest('#rs-identifier-next');
     if (idNext) {
-      try { e.preventDefault(); } catch(err) {}
-      // run the identifier logic here (capture-phase)
+      try { e.preventDefault(); } catch(err){}
       const identifierInput = document.getElementById('rs-identifier');
       const identifierError = document.getElementById('rs-identifier-error');
       const knownEmailText = document.getElementById('rs-known-email');
@@ -168,19 +197,27 @@ function setupCaptureInterceptor(){
           if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
           if (data && data.email) knownEmailText.textContent = data.email;
           else knownEmailText.textContent = raw;
-          showStep('rs-step-password'); passwordInput.value = ''; return;
-        } catch(err) { console.warn('phone check exception', err); identifierError.textContent = 'Unable to check right now'; return; }
+          // show only password step
+          showStep('rs-step-password');
+          passwordInput.value = '';
+          return;
+        } catch(err) {
+          console.warn('phone check exception', err);
+          identifierError.textContent = 'Unable to check right now';
+          return;
+        }
       }
 
-      // email case
+      // email case: basic validation
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
 
-      // Show password prompt (we don't rely solely on customers table)
+      // do optional customers check but regardless show password prompt - this avoids mismatch when customers row missing
       identifierError.textContent = '';
       try {
         const exists = await checkExistingByEmail(email);
         (document.getElementById('rs-known-email') || {textContent:''}).textContent = email;
+        // always show only password step first; user can switch to create account explicitly
         showStep('rs-step-password');
         (document.getElementById('rs-password') || {value:''}).value = '';
       } catch(err) {
@@ -190,7 +227,7 @@ function setupCaptureInterceptor(){
       return;
     }
 
-    // If click inside modal backdrop (close)
+    // 3) backdrop/close clicks
     const closeTarget = e.target.closest('[data-rs-close]');
     if (closeTarget) {
       try { e.preventDefault(); } catch(err){}
@@ -198,27 +235,17 @@ function setupCaptureInterceptor(){
       return;
     }
 
-    // If click on 'Sign in' or 'Create account' buttons let normal handlers run (they're wired non-capture).
-    // We don't intercept those here.
-  }, true); // capture = true
+    // Let other clicks pass through (signin/signup buttons handled by non-capture listeners)
+  }, true); // capture
 }
 
 /* ---------- Auth state UI and logout ---------- */
 function setupAuthStateUI(){
-  const toggle = document.getElementById('rs-header-login-toggle');
   const logoutBtn = document.getElementById('rs-logout-btn');
 
-  async function update() {
-    try {
-      const { data } = await supabase.auth.getUser();
-      const loggedIn = !!data?.user;
-      if (toggle) toggle.classList.toggle('hidden', loggedIn);
-      if (logoutBtn) logoutBtn.classList.toggle('hidden', !loggedIn);
-    } catch(e) {
-      console.warn('auth getUser failed', e);
-    }
-  }
+  async function update() { await updateAuthUI(); }
 
+  // sign out handler
   if (logoutBtn) {
     logoutBtn.removeEventListener('click', () => {});
     logoutBtn.addEventListener('click', async () => {
