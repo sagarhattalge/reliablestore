@@ -1,6 +1,12 @@
 // assets/js/site_header.js
 import { supabase } from '/assets/js/supabase_client.js';
 
+/* ---------- modal auto-open guard ----------
+   By default block any accidental auto-open on page load.
+   Only open when user clicks Login (openModal({force:true})) or when code intentionally forces it.
+*/
+window.__rs_block_auto_modal = true;
+
 /* ---------- helpers ---------- */
 function $(sel){ return document.querySelector(sel); }
 function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
@@ -17,8 +23,23 @@ function setCartCount(n){
 function readCart(){ try { return JSON.parse(localStorage.getItem('rs_cart_v1')||'{}'); }catch(e){return{}} }
 function cartTotalCount(){ const c = readCart(); return Object.values(c).reduce((s,i)=> s + (i.qty||0), 0); }
 
-/* ---------- modal control ---------- */
-function openModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.remove('hidden'); m.setAttribute('aria-hidden','false'); }
+/* ---------- modal control (now guarded) ---------- */
+/*
+  openModal({force:true})  -> always opens
+  openModal()             -> opens only if window.__rs_block_auto_modal !== true
+*/
+function openModal(opts = {}) {
+  const force = !!opts.force;
+  if (!force && window.__rs_block_auto_modal) {
+    // blocked; do nothing
+    console.debug('rs-auth-modal open blocked by __rs_block_auto_modal');
+    return;
+  }
+  const m = $('#rs-auth-modal');
+  if(!m) return;
+  m.classList.remove('hidden');
+  m.setAttribute('aria-hidden','false');
+}
 function closeModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.add('hidden'); m.setAttribute('aria-hidden','true'); }
 function showStep(id){ $all('.rs-step').forEach(s=> s.classList.add('hidden')); const el = $('#'+id); if(el) el.classList.remove('hidden'); }
 
@@ -57,7 +78,6 @@ async function signUpWithEmail(email, password, metadata = {}){
 
 /* ---------- attach modal handlers ---------- */
 function setupAuthModal(){
-  // elements
   const toggle = document.getElementById('rs-header-login-toggle');
   const modal = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) return;
@@ -81,39 +101,36 @@ function setupAuthModal(){
 
   const closeBtns = $all('[data-rs-close]');
 
-  // open modal
+  // open modal only when user clicks — use force:true so it bypasses the guard
   toggle.addEventListener('click', (e) => {
-    // NOT passive — we call preventDefault
-    try { e.preventDefault(); } catch(e){}
+    try { e.preventDefault(); } catch(_) {}
+    // allow user-triggered open even if auto-block is enabled
+    openModal({force:true});
     showStep('rs-step-enter');
-    identifierInput.value = '';
-    identifierError.textContent = '';
-    openModal();
+    identifierInput && (identifierInput.value = '');
+    identifierError && (identifierError.textContent = '');
     setTimeout(()=> identifierInput && identifierInput.focus(), 120);
   });
 
   // close modal from close buttons/backdrop
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
-    try { e.preventDefault(); } catch(e){}
+    try { e.preventDefault(); } catch(_) {}
     closeModal();
   }));
 
-  // back to enter
-  if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(e){}; showStep('rs-step-enter'); });
+  if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  // identifier step (email or phone)
+  /* identifier step (email or phone) */
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
-      try { e.preventDefault(); } catch(e){}
+      try { e.preventDefault(); } catch(_) {}
       identifierError.textContent = '';
       const raw = (identifierInput.value || '').trim();
       if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // quick normalization: if looks like phone (digits only) convert to a placeholder email-like string? 
-      let email = raw;
+      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         try {
-          // phone entered; attempt to find by phone in customers table
           const { data, error } = await supabase.from('customers').select('id,email,phone').eq('phone', raw).limit(1).maybeSingle();
           if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
           if (data && data.email) {
@@ -122,12 +139,11 @@ function setupAuthModal(){
             passwordInput.value = '';
             return;
           } else {
-            // no record; open signup step with phone prefilled
-            signupEmail.value = '';
-            signupName.value = '';
-            signupPassword.value = '';
+            signupEmail && (signupEmail.value = '');
+            signupName && (signupName.value = '');
+            signupPassword && (signupPassword.value = '');
             showStep('rs-step-signup');
-            signupEmail.focus();
+            signupEmail && signupEmail.focus();
             return;
           }
         } catch(err){
@@ -137,7 +153,8 @@ function setupAuthModal(){
         }
       }
 
-      // treat as email
+      // email branch
+      const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
 
       identifierNext.disabled = true;
@@ -150,13 +167,12 @@ function setupAuthModal(){
         passwordInput.value = '';
         passwordError.textContent = '';
       } else if (exists === false) {
-        signupEmail.value = email;
-        signupName.value = '';
-        signupPassword.value = '';
+        signupEmail && (signupEmail.value = email);
+        signupName && (signupName.value = '');
+        signupPassword && (signupPassword.value = '');
         showStep('rs-step-signup');
-        signupPassword.focus();
+        signupPassword && signupPassword.focus();
       } else {
-        // unknown (customers table not accessible) -> fallback to password first
         knownEmailText.textContent = email;
         showStep('rs-step-password');
         passwordInput.value = '';
@@ -167,10 +183,10 @@ function setupAuthModal(){
     }
   });
 
-  // signin button
+  /* signin button */
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
     try {
-      try { e.preventDefault(); } catch(e){}
+      try { e.preventDefault(); } catch(_) {}
       passwordError.textContent = '';
       const email = (knownEmailText.textContent || '').trim();
       const pw = (passwordInput.value || '').trim();
@@ -183,7 +199,7 @@ function setupAuthModal(){
         passwordError.textContent = res.error.message || 'Sign in failed';
         return;
       }
-      // success: set session using client if not automatically set
+      // if server returned session, set it explicitly (best effort)
       try {
         if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
@@ -199,14 +215,14 @@ function setupAuthModal(){
     } catch(err) {
       console.error('signin handler error', err);
       passwordError.textContent = 'Unexpected error. See console.';
-      try { signinBtn.disabled = false; } catch(e){}
+      try { signinBtn.disabled = false; } catch(_) {}
     }
   });
 
-  // signup button
+  /* signup button */
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
     try {
-      try { e.preventDefault(); } catch(e){}
+      try { e.preventDefault(); } catch(_) {}
       signupError.textContent = '';
       const email = (signupEmail.value || '').trim();
       const name = (signupName.value || '').trim();
@@ -229,18 +245,16 @@ function setupAuthModal(){
     } catch(err) {
       console.error('signup handler error', err);
       signupError.textContent = 'Unexpected error. See console.';
-      try { signupBtn.disabled = false; } catch(e){}
+      try { signupBtn.disabled = false; } catch(_) {}
     }
   });
 
-  // cancel signup/back
-  if (cancelSignup) cancelSignup.addEventListener('click', (e)=> { try { e.preventDefault(); } catch(e){}; showStep('rs-step-enter'); });
+  if (cancelSignup) cancelSignup.addEventListener('click', (e)=> { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
   // close on ESC
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
-
 }
 
 /* ---------- attach generic behavior (cart + initial wiring) ---------- */
@@ -273,7 +287,6 @@ export function renderHeaderExtras(){
           supabase.auth.getUser(),
           new Promise((_, rej) => setTimeout(()=> rej(new Error('getUser timeout')), 6000))
         ]);
-        // if getUser returned an object {data: {user: ...}}
         const user = userRes && userRes.data && userRes.data.user ? userRes.data.user : (userRes && userRes.user) ? userRes.user : null;
         if (user) {
           setUiLoggedIn(true);
@@ -320,7 +333,6 @@ export function renderHeaderExtras(){
       document.getElementById('rs-logout-btn').addEventListener('click', async (e) => {
         try { e.preventDefault && e.preventDefault(); } catch(e){}
         try {
-          // sign out via client (best effort)
           await supabase.auth.signOut().catch(()=>{});
         } catch(e){}
         // clear stored keys we used
