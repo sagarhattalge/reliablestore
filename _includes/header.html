@@ -15,8 +15,11 @@
       <!-- header login toggle (opens modal) -->
       <button id="rs-header-login-toggle" class="btn-link login-link">Login / Sign Up</button>
 
+      <!-- logout button (hidden until logged in) -->
+      <button id="rs-logout-btn" class="rs-btn hidden" style="margin-left:8px;">Logout</button>
+
       <!-- Cart remains the same -->
-      <a href="/cart.html" class="cart">Cart <span id="cart-count">0</span></a>
+      <a href="/cart.html" class="cart" style="margin-left:10px;">Cart <span id="cart-count">0</span></a>
     </div>
   </div>
 
@@ -38,14 +41,15 @@
         <div id="rs-identifier-error" class="rs-error"></div>
       </div>
 
-      <!-- Step B: existing user -> ask password -->
+      <!-- Step B: password prompt (default for existing auth users) -->
       <div id="rs-step-password" class="rs-step hidden">
         <h3>Sign in</h3>
         <div id="rs-known-email" class="muted"></div>
         <input id="rs-password" type="password" placeholder="Password" aria-label="Password" />
-        <div style="margin-top:10px;display:flex;gap:8px">
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
           <button id="rs-signin-btn" class="rs-btn">Sign in</button>
           <button id="rs-back-to-enter" class="rs-btn ghost">Back</button>
+          <button id="rs-go-signup" class="rs-btn ghost" style="margin-left:auto">Create account</button>
         </div>
         <div id="rs-password-error" class="rs-error"></div>
       </div>
