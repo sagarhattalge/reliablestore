@@ -89,7 +89,7 @@ function setupAuthModal(){
     identifierError.textContent = '';
     openModal();
     setTimeout(()=> identifierInput.focus(), 120);
-  }, { passive: true });
+  });
 
   // close modal from close buttons/backdrop
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
@@ -144,7 +144,7 @@ function setupAuthModal(){
     passwordError.textContent = '';
 
     // If customers table returned true, that's confirmation; if false or null we still show password to let auth handle it.
-  }, { passive: true });
+  });
 
   // signin button
   signinBtn.addEventListener('click', async (e) => {
@@ -165,7 +165,7 @@ function setupAuthModal(){
     closeModal();
     const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
     window.location.href = decodeURIComponent(rt || '/');
-  }, { passive: true });
+  });
 
   // "Create account" from password step - opens signup step with email prefilled
   if (goSignup) {
@@ -202,7 +202,7 @@ function setupAuthModal(){
     closeModal();
     const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
     window.location.href = decodeURIComponent(rt || '/');
-  }, { passive: true });
+  });
 
   // cancel signup/back
   if (cancelSignup) cancelSignup.addEventListener('click', (e)=> { e.preventDefault(); showStep('rs-step-enter'); });
