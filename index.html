@@ -1,27 +1,70 @@
+---
+layout: default
+title: Home — Reliable Store
+---
+
+<!-- FULL-BLEED HERO -->
+<section class="hero-full" role="banner" aria-label="Home hero"
+         style="background-image:url('/assets/uploads/hero11-free-img.png');">
+  <div class="hero-overlay"></div>
+  <div class="hero-inner">
+    <h1>Welcome to Reliable Store</h1>
+    <p>Authentic Konkan products delivered straight to your doorstep. Quality you trust, service you deserve.</p>
+
+    <!-- simple search -->
+    <form id="searchForm" style="margin-top:18px;display:flex;gap:8px;max-width:920px;margin-left:auto;margin-right:auto;">
+      <input id="searchInput" type="search" placeholder="Search for products..." style="flex:1;padding:10px;border-radius:6px;border:1px solid #e6e9ef" />
+      <button type="button" onclick="doSearch()" class="btn btn-primary">Search</button>
+    </form>
+  </div>
+</section>
+
+<!-- FEATURED PRODUCTS -->
+<section class="features-band">
+  <div class="features-wrap" id="product-list"></div>
+</section>
+
 <script>
+  /* -------------------------
+     DEMO PRODUCTS
+  ------------------------- */
   const products = [
     { id: 1, name: 'Fast Charger 30W', price: 699, img: '/assets/uploads/charger-300x200.webp' },
     { id: 2, name: 'Type-C Cable 1m', price: 249, img: '/assets/uploads/cable-300x200.webp' },
     { id: 3, name: 'Power Bank 20000mAh', price: 1299, img: '/assets/uploads/powerbank-300x200.webp' }
   ];
 
+  /* -------------------------
+     CART HELPERS
+  ------------------------- */
   function getCart() {
-    try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); } catch(e){ return {}; }
+    try {
+      return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}');
+    } catch (e) {
+      return {};
+    }
   }
+
   function setCart(cart) {
     localStorage.setItem('rs_cart_v1', JSON.stringify(cart));
-    // trigger storage event for same-tab listeners
+
+    // Trigger update event for header listener
     window.dispatchEvent(new Event('storage'));
   }
 
+  /* -------------------------
+     RENDER PRODUCTS
+  ------------------------- */
   function renderProducts() {
     const list = document.getElementById('product-list');
     list.innerHTML = '';
+
     products.forEach(p => {
       const el = document.createElement('div');
       el.className = 'feature';
       el.innerHTML = `
-        <img src="${p.img}" alt="${p.name}" loading="lazy" style="height:160px;object-fit:contain;margin-bottom:12px"/>
+        <img src="${p.img}" alt="${p.name}" loading="lazy"
+             style="height:160px;object-fit:contain;margin-bottom:12px"/>
         <h3 style="font-size:16px">${p.name}</h3>
         <p style="font-weight:700;margin:8px 0">₹${p.price}</p>
         <button class="btn btn-primary w-100" data-add="${p.id}">Add to Cart</button>
@@ -29,37 +72,63 @@
       list.appendChild(el);
     });
 
-    // wire add buttons
+    // Connect add-to-cart buttons
     list.querySelectorAll('[data-add]').forEach(btn => {
       btn.addEventListener('click', () => addToCart(Number(btn.getAttribute('data-add'))));
     });
   }
 
+  /* -------------------------
+     ADD TO CART
+  ------------------------- */
   function addToCart(id) {
     const p = products.find(x => x.id === id);
     if (!p) return;
+
     const cart = getCart();
     const key = 'p' + id;
-    if (!cart[key]) cart[key] = { id: p.id, title: p.name, price: p.price, qty: 0 };
+
+    if (!cart[key]) {
+      cart[key] = {
+        id: p.id,
+        title: p.name,
+        price: p.price,
+        qty: 0
+      };
+    }
+
     cart[key].qty = (cart[key].qty || 0) + 1;
     setCart(cart);
-    // header script listens to storage event and will update #cart-count
-    // For immediate feedback in-page, also update UI badge
+
+    // Update header badge immediately
     const badge = document.getElementById('cart-count') || document.getElementById('cart_count');
-    if (badge) badge.textContent = Object.values(cart).reduce((s,i)=> s + (i.qty||0), 0);
+    if (badge) {
+      badge.textContent = Object.values(cart).reduce((s, i) => s + (i.qty || 0), 0);
+    }
   }
 
+  /* -------------------------
+     SIMPLE SEARCH
+  ------------------------- */
   function doSearch() {
     const q = document.getElementById('searchInput').value.trim().toLowerCase();
     if (!q) return alert('Enter a search term');
+
     const results = products.filter(p => p.name.toLowerCase().includes(q));
     const list = document.getElementById('product-list');
     list.innerHTML = '';
+
+    if (results.length === 0) {
+      list.innerHTML = '<p>No matching products found.</p>';
+      return;
+    }
+
     results.forEach(p => {
       const el = document.createElement('div');
       el.className = 'feature';
       el.innerHTML = `
-        <img src="${p.img}" alt="${p.name}" loading="lazy" style="height:160px;object-fit:contain;margin-bottom:12px"/>
+        <img src="${p.img}" alt="${p.name}" loading="lazy"
+             style="height:160px;object-fit:contain;margin-bottom:12px"/>
         <h3 style="font-size:16px">${p.name}</h3>
         <p style="font-weight:700;margin:8px 0">₹${p.price}</p>
       `;
