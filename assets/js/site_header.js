@@ -1,13 +1,24 @@
 // assets/js/site_header.js
+// Updated: fixes for modal hang, passive listener errors, auth UI refresh.
 import { supabase } from '/assets/js/supabase_client.js';
 
-/* ---------- modal auto-open guard ----------
-   By default block any accidental auto-open on page load.
-   Only open when user clicks Login (openModal({force:true})) or when code intentionally forces it.
-*/
+// prevent accidental auto-open on page load — keep this true unless you actually want auto-open
 window.__rs_block_auto_modal = true;
 
-/* ---------- helpers ---------- */
+/* ---------- tiny helper to attach listeners safely (ensures passive:false when needed) ---------- */
+function on(el, ev, fn, opts = {}){
+  if(!el) return;
+  try {
+    // ensure preventDefault can be used by default
+    const opt = Object.assign({ passive: false }, opts);
+    el.addEventListener(ev, fn, opt);
+  } catch(e){
+    // some older browsers may not accept options object
+    el.addEventListener(ev, fn, !!opts.capture);
+  }
+}
+
+/* ---------- DOM helpers ---------- */
 function $(sel){ return document.querySelector(sel); }
 function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
 function getReturnTo(){ return window.location.pathname + window.location.search + window.location.hash; }
@@ -23,15 +34,10 @@ function setCartCount(n){
 function readCart(){ try { return JSON.parse(localStorage.getItem('rs_cart_v1')||'{}'); }catch(e){return{}} }
 function cartTotalCount(){ const c = readCart(); return Object.values(c).reduce((s,i)=> s + (i.qty||0), 0); }
 
-/* ---------- modal control (now guarded) ---------- */
-/*
-  openModal({force:true})  -> always opens
-  openModal()             -> opens only if window.__rs_block_auto_modal !== true
-*/
+/* ---------- modal control (guarded) ---------- */
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) {
-    // blocked; do nothing
     console.debug('rs-auth-modal open blocked by __rs_block_auto_modal');
     return;
   }
@@ -43,45 +49,26 @@ function openModal(opts = {}) {
 function closeModal(){ const m=$('#rs-auth-modal'); if(!m) return; m.classList.add('hidden'); m.setAttribute('aria-hidden','true'); }
 function showStep(id){ $all('.rs-step').forEach(s=> s.classList.add('hidden')); const el = $('#'+id); if(el) el.classList.remove('hidden'); }
 
-/* ---------- UI wiring and Supabase logic ---------- */
+/* ---------- Supabase helpers ---------- */
 async function checkExistingByEmail(email){
   try {
     const { data, error } = await supabase.from('customers').select('id,email').eq('email', email).limit(1).maybeSingle();
-    if (error) {
-      console.warn('customers table check error:', error);
-      return null;
-    }
+    if (error) { console.warn('customers table check error:', error); return null; }
     return data ? true : false;
-  } catch(err){
-    console.warn('checkExistingByEmail exception', err);
-    return null;
-  }
+  } catch(err){ console.warn('checkExistingByEmail exception', err); return null; }
 }
-
 async function signInWithPassword(email, password){
-  try {
-    const res = await supabase.auth.signInWithPassword({ email, password });
-    return res;
-  } catch(e){
-    return { error: e };
-  }
+  try { return await supabase.auth.signInWithPassword({ email, password }); } catch(e){ return { error: e }; }
 }
+async function signUpWithEmail(email, password, metadata = {}){ try { return await supabase.auth.signUp({ email, password, options: { data: metadata } }); } catch(e){ return { error: e }; } }
 
-async function signUpWithEmail(email, password, metadata = {}){
-  try {
-    const res = await supabase.auth.signUp({ email, password, options: { data: metadata }});
-    return res;
-  } catch(e){
-    return { error: e };
-  }
-}
-
-/* ---------- attach modal handlers ---------- */
+/* ---------- modal wiring ---------- */
 function setupAuthModal(){
   const toggle = document.getElementById('rs-header-login-toggle');
   const modal = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) return;
 
+  // elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext = document.getElementById('rs-identifier-next');
   const identifierError = document.getElementById('rs-identifier-error');
@@ -90,6 +77,7 @@ function setupAuthModal(){
   const passwordInput = document.getElementById('rs-password');
   const signinBtn = document.getElementById('rs-signin-btn');
   const passwordError = document.getElementById('rs-password-error');
+
   const backToEnter = document.getElementById('rs-back-to-enter');
 
   const signupEmail = document.getElementById('rs-signup-email');
@@ -101,253 +89,165 @@ function setupAuthModal(){
 
   const closeBtns = $all('[data-rs-close]');
 
-  // open modal only when user clicks — use force:true so it bypasses the guard
-  toggle.addEventListener('click', (e) => {
-    try { e.preventDefault(); } catch(_) {}
-    // allow user-triggered open even if auto-block is enabled
-    openModal({force:true});
-    showStep('rs-step-enter');
-    identifierInput && (identifierInput.value = '');
-    identifierError && (identifierError.textContent = '');
-    setTimeout(()=> identifierInput && identifierInput.focus(), 120);
-  });
+  // ensure clicks inside the modal panel do not bubble to document handlers that may close it
+  on(modal, 'click', (ev) => { ev.stopPropagation && ev.stopPropagation(); }, { passive: true });
 
-  // close modal from close buttons/backdrop
-  closeBtns.forEach(b => b.addEventListener('click', (e) => {
-    try { e.preventDefault(); } catch(_) {}
-    closeModal();
-  }));
+  // open: allow user clicks (force true overrides the auto-block)
+  on(toggle, 'click', (e) => { try { e.preventDefault && e.preventDefault(); } catch(_){}; openModal({force:true}); showStep('rs-step-enter'); if(identifierInput) identifierInput.value = ''; if(identifierError) identifierError.textContent = ''; setTimeout(()=> identifierInput && identifierInput.focus(), 120); }, { passive: false });
 
-  if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
+  // close via explicit close buttons/backdrop
+  closeBtns.forEach(b => on(b, 'click', (e)=>{ try{ e.preventDefault && e.preventDefault(); }catch(_){}; closeModal(); }, { passive:false }));
 
-  /* identifier step (email or phone) */
-  if (identifierNext) identifierNext.addEventListener('click', async (e) => {
+  if (backToEnter) on(backToEnter, 'click', (e)=>{ try{ e.preventDefault && e.preventDefault(); }catch(_){}; showStep('rs-step-enter'); }, { passive:false });
+
+  /* identifier step */
+  if (identifierNext) on(identifierNext, 'click', async (e) => {
     try {
-      try { e.preventDefault(); } catch(_) {}
-      identifierError.textContent = '';
-      const raw = (identifierInput.value || '').trim();
-      if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
+      try { e.preventDefault && e.preventDefault(); } catch(_){}
+      identifierError && (identifierError.textContent = '');
+      const raw = (identifierInput && identifierInput.value || '').trim();
+      if (!raw) { identifierError && (identifierError.textContent = 'Please enter your email or mobile number'); return; }
 
       // phone branch
-      if (/^\d{10,}$/.test(raw)) {
+      if (/^\d{10,}$/.test(raw)){
         try {
           const { data, error } = await supabase.from('customers').select('id,email,phone').eq('phone', raw).limit(1).maybeSingle();
-          if (error) { console.warn('phone lookup error', error); identifierError.textContent = 'Could not check phone right now'; return; }
-          if (data && data.email) {
-            knownEmailText.textContent = data.email;
-            showStep('rs-step-password');
-            passwordInput.value = '';
-            return;
-          } else {
-            signupEmail && (signupEmail.value = '');
-            signupName && (signupName.value = '');
-            signupPassword && (signupPassword.value = '');
-            showStep('rs-step-signup');
-            signupEmail && signupEmail.focus();
-            return;
-          }
-        } catch(err){
-          console.warn('phone check exception', err);
-          identifierError.textContent = 'Unable to check right now';
-          return;
-        }
+          if (error) { console.warn('phone lookup error', error); identifierError && (identifierError.textContent = 'Could not check phone right now'); return; }
+          if (data && data.email) { knownEmailText && (knownEmailText.textContent = data.email); showStep('rs-step-password'); passwordInput && (passwordInput.value=''); return; }
+          // new -> signup
+          signupEmail && (signupEmail.value = ''); signupName && (signupName.value = ''); signupPassword && (signupPassword.value = ''); showStep('rs-step-signup'); signupEmail && signupEmail.focus(); return;
+        } catch(err){ console.warn('phone check exception', err); identifierError && (identifierError.textContent = 'Unable to check right now'); return; }
       }
 
-      // email branch
+      // email branch — basic validation
       const email = raw;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError && (identifierError.textContent = 'Please enter a valid email address'); return; }
 
       identifierNext.disabled = true;
       const exists = await checkExistingByEmail(email);
       identifierNext.disabled = false;
 
-      if (exists === true) {
-        knownEmailText.textContent = email;
-        showStep('rs-step-password');
-        passwordInput.value = '';
-        passwordError.textContent = '';
-      } else if (exists === false) {
-        signupEmail && (signupEmail.value = email);
-        signupName && (signupName.value = '');
-        signupPassword && (signupPassword.value = '');
-        showStep('rs-step-signup');
-        signupPassword && signupPassword.focus();
-      } else {
-        knownEmailText.textContent = email;
-        showStep('rs-step-password');
-        passwordInput.value = '';
-      }
-    } catch(err) {
-      console.error('identifierNext handler error', err);
-      identifierError.textContent = 'Unexpected error. Check console.';
-    }
-  });
+      if (exists === true) { knownEmailText && (knownEmailText.textContent = email); showStep('rs-step-password'); passwordInput && (passwordInput.value=''); passwordError && (passwordError.textContent=''); }
+      else if (exists === false) { signupEmail && (signupEmail.value = email); signupName && (signupName.value = ''); signupPassword && (signupPassword.value = ''); showStep('rs-step-signup'); signupPassword && signupPassword.focus(); }
+      else { knownEmailText && (knownEmailText.textContent = email); showStep('rs-step-password'); passwordInput && (passwordInput.value=''); }
+    } catch(err){ console.error('identifierNext handler error', err); identifierError && (identifierError.textContent = 'Unexpected error. Check console.'); }
+  }, { passive:false });
 
-  /* signin button */
-  if (signinBtn) signinBtn.addEventListener('click', async (e) => {
+  /* signin */
+  if (signinBtn) on(signinBtn, 'click', async (e)=>{
     try {
-      try { e.preventDefault(); } catch(_) {}
-      passwordError.textContent = '';
-      const email = (knownEmailText.textContent || '').trim();
-      const pw = (passwordInput.value || '').trim();
-      if (!email || !pw) { passwordError.textContent = 'Enter your password'; return; }
+      try{ e.preventDefault && e.preventDefault(); }catch(_){}
+      passwordError && (passwordError.textContent='');
+      const email = (knownEmailText && knownEmailText.textContent || '').trim();
+      const pw = (passwordInput && passwordInput.value || '').trim();
+      if (!email || !pw) { passwordError && (passwordError.textContent = 'Enter your password'); return; }
       signinBtn.disabled = true;
       const res = await signInWithPassword(email, pw);
       signinBtn.disabled = false;
-      if (res.error) {
-        console.warn('signIn error', res.error);
-        passwordError.textContent = res.error.message || 'Sign in failed';
-        return;
-      }
-      // if server returned session, set it explicitly (best effort)
+      if (res.error) { console.warn('signIn error', res.error); passwordError && (passwordError.textContent = res.error.message || 'Sign in failed'); return; }
+
+      // ensure session applied
       try {
         if (!res.error && res.data?.session) {
-          await supabase.auth.setSession({
-            access_token: res.data.session.access_token,
-            refresh_token: res.data.session.refresh_token
-          });
+          await supabase.auth.setSession({ access_token: res.data.session.access_token, refresh_token: res.data.session.refresh_token });
         }
       } catch(e){ console.warn('setSession after sign-in failed', e); }
 
       closeModal();
+      // refresh UI immediately
+      try { window.__rs_refreshAuthUI && await window.__rs_refreshAuthUI(); } catch(e){}
       const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
       window.location.href = decodeURIComponent(rt || '/');
-    } catch(err) {
-      console.error('signin handler error', err);
-      passwordError.textContent = 'Unexpected error. See console.';
-      try { signinBtn.disabled = false; } catch(_) {}
-    }
-  });
+    } catch(err){ console.error('signin handler error', err); passwordError && (passwordError.textContent = 'Unexpected error. See console.'); try{ signinBtn.disabled = false; }catch(_){} }
+  }, { passive:false });
 
-  /* signup button */
-  if (signupBtn) signupBtn.addEventListener('click', async (e) => {
+  /* signup */
+  if (signupBtn) on(signupBtn, 'click', async (e)=>{
     try {
-      try { e.preventDefault(); } catch(_) {}
-      signupError.textContent = '';
-      const email = (signupEmail.value || '').trim();
-      const name = (signupName.value || '').trim();
-      const pw = (signupPassword.value || '').trim();
-      if (!email || !name || !pw) { signupError.textContent = 'Fill name, email and password'; return; }
-      if (pw.length < 6) { signupError.textContent = 'Password must be at least 6 characters'; return; }
-
+      try{ e.preventDefault && e.preventDefault(); }catch(_){}
+      signupError && (signupError.textContent='');
+      const email = (signupEmail && signupEmail.value || '').trim();
+      const name = (signupName && signupName.value || '').trim();
+      const pw = (signupPassword && signupPassword.value || '').trim();
+      if (!email || !name || !pw) { signupError && (signupError.textContent = 'Fill name, email and password'); return; }
+      if (pw.length < 6) { signupError && (signupError.textContent = 'Password must be at least 6 characters'); return; }
       signupBtn.disabled = true;
       const res = await signUpWithEmail(email, pw, { full_name: name });
       signupBtn.disabled = false;
-      if (res.error) {
-        console.warn('signup error', res.error);
-        signupError.textContent = res.error.message || 'Signup failed';
-        return;
-      }
-
+      if (res.error) { console.warn('signup error', res.error); signupError && (signupError.textContent = res.error.message || 'Signup failed'); return; }
       closeModal();
+      try { window.__rs_refreshAuthUI && await window.__rs_refreshAuthUI(); } catch(e){}
       const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
       window.location.href = decodeURIComponent(rt || '/');
-    } catch(err) {
-      console.error('signup handler error', err);
-      signupError.textContent = 'Unexpected error. See console.';
-      try { signupBtn.disabled = false; } catch(_) {}
-    }
-  });
+    } catch(err){ console.error('signup handler error', err); signupError && (signupError.textContent = 'Unexpected error. See console.'); try{ signupBtn.disabled = false; }catch(_){} }
+  }, { passive:false });
 
-  if (cancelSignup) cancelSignup.addEventListener('click', (e)=> { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
+  if (cancelSignup) on(cancelSignup, 'click', (e)=>{ try{ e.preventDefault && e.preventDefault(); }catch(_){}; showStep('rs-step-enter'); }, { passive:false });
 
   // close on ESC
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-  });
+  on(document, 'keydown', (e)=>{ if (e.key === 'Escape') closeModal(); }, { passive:true });
 }
 
-/* ---------- attach generic behavior (cart + initial wiring) ---------- */
+/* ---------- auth UI + logout ---------- */
 export function renderHeaderExtras(){
-  // update cart
   setCartCount(cartTotalCount());
   window.addEventListener('storage', ()=> setCartCount(cartTotalCount()));
 
-  // wire modal & toggle
   try { setupAuthModal(); } catch (e) { console.warn('setupAuthModal error', e); }
 
-  // hide login when logged in (simple)
   try {
     const toggle = document.getElementById('rs-header-login-toggle');
     const logout = document.getElementById('rs-logout-btn');
 
     const setUiLoggedIn = (loggedIn) => {
       if (toggle) toggle.style.display = loggedIn ? 'none' : '';
-      if (logout) {
-        logout.style.display = loggedIn ? '' : 'none';
-        logout.setAttribute('aria-hidden', loggedIn ? 'false' : 'true');
-      }
+      if (logout) logout.style.display = loggedIn ? '' : 'none';
     };
 
-    // attempt to get user via supabase; but handle timeout/fallback
-    async function refreshAuthUI(){
+    // refresh function exposed globally for use after sign in/signup
+    window.__rs_refreshAuthUI = async function refreshAuthUI(){
       try {
-        // wait for getUser but with timeout
-        const userRes = await Promise.race([
-          supabase.auth.getUser(),
-          new Promise((_, rej) => setTimeout(()=> rej(new Error('getUser timeout')), 6000))
-        ]);
+        // prefer supabase client
+        const userRes = await Promise.race([ supabase.auth.getUser(), new Promise((_, rej)=> setTimeout(()=> rej(new Error('getUser timeout')), 6000)) ]);
         const user = userRes && userRes.data && userRes.data.user ? userRes.data.user : (userRes && userRes.user) ? userRes.user : null;
-        if (user) {
-          setUiLoggedIn(true);
-          return;
-        }
-      } catch(e){
-        console.warn('supabase.getUser failed/timeout, falling back to token check', e);
-      }
+        if (user) { setUiLoggedIn(true); return; }
+      } catch(e){ console.warn('supabase.getUser failed/timeout, falling back', e); }
 
-      // fallback: check stored Supabase token and /auth/v1/user
+      // fallback: token check
       try {
-        const storageKey = supabase.storageKey || 'sb-gugcnntetqarewwnzrki-auth-token';
+        const storageKey = supabase.storageKey || Object.keys(localStorage).find(k => k.startsWith('sb-')) || 'sb-gugcnntetqarewwnzrki-auth-token';
         const raw = localStorage.getItem(storageKey);
         if (!raw) { setUiLoggedIn(false); return; }
         let parsed;
         try { parsed = JSON.parse(raw); } catch(e){ parsed = null; }
         const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token;
         if (!access_token) { setUiLoggedIn(false); return; }
-        const url = supabase.supabaseUrl.replace(/\/$/,'') + '/auth/v1/user';
+        const url = (supabase.supabaseUrl || '').replace(/\/$/,'') + '/auth/v1/user';
         const resp = await fetch(url, { method:'GET', headers: { 'Authorization': 'Bearer ' + access_token, 'apikey': supabase.supabaseKey }, mode: 'cors', cache: 'no-store' });
-        if (resp.status === 200) {
-          setUiLoggedIn(true);
-        } else {
-          setUiLoggedIn(false);
-        }
-      } catch(e){
-        console.warn('fallback token check failed', e);
-        setUiLoggedIn(false);
-      }
-    }
+        if (resp.status === 200) setUiLoggedIn(true); else setUiLoggedIn(false);
+      } catch(e){ console.warn('fallback token check failed', e); setUiLoggedIn(false); }
+    };
 
-    // attach auth state change listener
-    try {
-      supabase.auth.onAuthStateChange(() => {
-        refreshAuthUI().catch(e=>console.warn('refreshAuthUI error', e));
-      });
-    } catch(e){ /* ignore */ }
+    // attach auth state change
+    try { supabase.auth.onAuthStateChange(()=> { window.__rs_refreshAuthUI && window.__rs_refreshAuthUI(); }); } catch(e){}
 
     // initial
-    refreshAuthUI().catch(e=>console.warn('initial refreshAuthUI error', e));
+    window.__rs_refreshAuthUI && window.__rs_refreshAuthUI();
 
-    // attach logout click handler (safe)
-    if (document.getElementById('rs-logout-btn')) {
-      document.getElementById('rs-logout-btn').addEventListener('click', async (e) => {
-        try { e.preventDefault && e.preventDefault(); } catch(e){}
-        try {
-          await supabase.auth.signOut().catch(()=>{});
-        } catch(e){}
-        // clear stored keys we used
-        try {
-          const storageKey = supabase.storageKey || 'sb-gugcnntetqarewwnzrki-auth-token';
-          localStorage.removeItem(storageKey);
-          Object.keys(localStorage).forEach(k => { if (/supabase|sb-|auth|session|token/.test(k)) localStorage.removeItem(k); });
-        } catch(e){}
-        try { alert('You have been logged out.'); } catch(e){}
-        window.location.href = '/';
-      });
-    }
+    // logout handler
+    if (logout) on(logout, 'click', async (e)=>{
+      try { e.preventDefault && e.preventDefault(); } catch(_){}
+      try { await supabase.auth.signOut().catch(()=>{}); } catch(e){}
+      try {
+        const storageKey = supabase.storageKey || Object.keys(localStorage).find(k => k.startsWith('sb-')) || 'sb-gugcnntetqarewwnzrki-auth-token';
+        localStorage.removeItem(storageKey);
+      } catch(e){}
+      try { alert('You have been logged out.'); } catch(e){}
+      window.location.href = '/';
+    }, { passive:false });
 
   } catch(e){ console.warn('auth state wiring failed', e); }
 }
 
-/* ---------- auto-run on import ---------- */
+/* auto-run */
 try { renderHeaderExtras(); } catch(e){ console.warn('renderHeaderExtras error', e); }
