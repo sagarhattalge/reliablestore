@@ -264,9 +264,10 @@ export function renderHeaderExtras(){
   setCartCount(cartTotalCount());
   window.addEventListener('storage', ()=> setCartCount(cartTotalCount()));
 
-  // core wiring
+  // NOTE: run delegated/cloning handlers BEFORE wiring modal internals.
+  // This ensures cloning does not remove handlers attached by setupAuthModalInternal.
+  try { setupDelegatedHandlers(); } catch(e){ console.warn('setupDelegatedHandlers error', e); }
   try { setupAuthModalInternal(); } catch(e){ console.warn('setupAuthModalInternal error', e); }
-  try { setupCaptureInterceptor(); } catch(e){ console.warn('setupCaptureInterceptor error', e); }
   try { setupAuthStateUI(); } catch(e){ console.warn('setupAuthStateUI error', e); }
 }
 
