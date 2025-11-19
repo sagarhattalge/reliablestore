@@ -109,8 +109,7 @@ function setupAuthModal(){
     const raw = (identifierInput.value || '').trim();
     if (!raw) { identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-    // quick normalization: if looks like phone (digits only) convert to a placeholder email-like string? 
-    // (Better to require email to simplify logic; but we accept both — if phone is used, you must have stored phone in customers)
+    // quick normalization: if looks like phone (digits only)
     let email = raw;
     if (/^\d{10,}$/.test(raw)) {
       // phone entered; attempt to find by phone in customers table
@@ -124,11 +123,10 @@ function setupAuthModal(){
           passwordInput.value = '';
           return;
         } else {
-          // no record; open signup step with phone prefilled
+          // no record; open signup step
           signupEmail.value = '';
           signupName.value = '';
           signupPassword.value = '';
-          // store phone in name field or metadata if you wish
           showStep('rs-step-signup');
           signupEmail.focus();
           return;
@@ -141,7 +139,6 @@ function setupAuthModal(){
     }
 
     // treat as email
-    // minimal email check
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { identifierError.textContent = 'Please enter a valid email address'; return; }
 
     // Check customers table for existing email
@@ -163,7 +160,7 @@ function setupAuthModal(){
       showStep('rs-step-signup');
       signupPassword.focus();
     } else {
-      // unknown (customers table not accessible) -> we fallback to prompt password first
+      // unknown (customers table not accessible) -> fallback to password prompt
       knownEmailText.textContent = email;
       showStep('rs-step-password');
       passwordInput.value = '';
@@ -212,7 +209,6 @@ function setupAuthModal(){
 
     // Signed up successfully — depending on your Supabase email confirmation setting, either user is created or needs confirmation
     closeModal();
-    // If email confirm required, show info (we keep it simple and redirect to home or returnTo)
     const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
     window.location.href = decodeURIComponent(rt || '/');
   }, { passive: true });
@@ -255,19 +251,3 @@ export function renderHeaderExtras(){
 
 /* ---------- auto-run on import ---------- */
 try { renderHeaderExtras(); } catch(e){ console.warn('renderHeaderExtras error', e); }
-
-/* ---------- helper functions for Supabase calls ---------- */
-async function checkExistingByEmail(email){
-  // same as above: wrapper for exported function (dup allowed)
-  try {
-    const { data, error } = await supabase.from('customers').select('id,email').eq('email', email).limit(1).maybeSingle();
-    if (error) { console.warn('customers table check error', error); return null; }
-    return data ? true : false;
-  } catch(err){ console.warn('checkExistingByEmail exception', err); return null; }
-}
-async function signInWithPassword(email, password){
-  try { return await supabase.auth.signInWithPassword({ email, password }); } catch(e){ return { error: e }; }
-}
-async function signUpWithEmail(email, password, metadata={}){ 
-  try { return await supabase.auth.signUp({ email, password, options: { data: metadata } }); } catch(e){ return { error: e }; }
-}
