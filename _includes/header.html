@@ -1,18 +1,42 @@
-<header class="site-topbar" role="banner">
-  <div class="wrap topbar-inner">
-    <a class="brand" href="/"><img src="/assets/icons/header-logo.png" alt="ReliableStore" class="logo" /></a>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ page.title | default: site.title }}</title>
 
-    <nav class="site-nav" aria-label="Main navigation">
-      <a href="/">Home</a>
-      <a href="/all-products.html">All Products</a>
-      <a href="/category.html">Grocery &amp; Gourmet Foods</a>
-      <a href="/contact.html">Contact</a>
-      <a href="/about.html">About</a>
-    </nav>
+  <!-- Favicons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
 
-    <div class="header-actions">
-      <a href="/account.html" class="btn-link login-link">Login / Sign Up</a>
-      <a href="/cart.html" class="cart">Cart <span id="cart-count">0</span></a>
-    </div>
-  </div>
-</header>
+  <!-- Styles -->
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+
+  <!-- Small site meta -->
+  <meta name="theme-color" content="#FE9900" />
+</head>
+<body>
+  {% include header.html %}
+
+  <main>
+    {{ content }}
+  </main>
+
+  {% include footer.html %}
+
+  <!-- lightweight page behaviour -->
+  <script>
+    // sticky header shadow on scroll
+    (function(){
+      const bar = document.querySelector('.site-topbar');
+      if (!bar) return;
+      const onScroll = () => {
+        if (window.scrollY > 12) bar.classList.add('scrolled');
+        else bar.classList.remove('scrolled');
+      };
+      document.addEventListener('scroll', onScroll, {passive:true});
+      onScroll();
+    })();
+  </script>
+</body>
+</html>
