@@ -60,35 +60,62 @@ export function renderHeader() {
   div.innerHTML = siteHeaderHtml;
   document.body.insertBefore(div, document.body.firstChild);
 
-  // wire buttons
-  document.getElementById('btn_cart').addEventListener('click', () => {
-    window.location.href = '/cart.html';
-  });
+  // hide any temporary fallback header if present
+  if (window.hideFallbackHeader) {
+    try { window.hideFallbackHeader(); } catch(e) { /* ignore */ }
+  }
 
-  document.getElementById('btn_login').addEventListener('click', () => {
-    const returnTo = encodeURIComponent(getReturnTo());
-    window.location.href = '/login.html?returnTo=' + returnTo;
-  });
+  // wire buttons safely (check elements exist)
+  const cartBtn = document.getElementById('btn_cart');
+  if (cartBtn) {
+    cartBtn.addEventListener('click', () => {
+      window.location.href = '/cart.html';
+    });
+  }
 
-  document.getElementById('btn_signup').addEventListener('click', () => {
-    const returnTo = encodeURIComponent(getReturnTo());
-    window.location.href = '/signup.html?returnTo=' + returnTo;
-  });
+  const loginBtn = document.getElementById('btn_login');
+  const signupBtn = document.getElementById('btn_signup');
+  const logoutBtn = document.getElementById('btn_logout');
 
-  document.getElementById('btn_logout').addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    // show logout message then redirect home
-    alert('You have been logged out.');
-    window.location.href = '/';
-  });
+  if (loginBtn) {
+    loginBtn.addEventListener('click', () => {
+      const returnTo = encodeURIComponent(getReturnTo());
+      window.location.href = '/login.html?returnTo=' + returnTo;
+    });
+  }
+
+  if (signupBtn) {
+    signupBtn.addEventListener('click', () => {
+      const returnTo = encodeURIComponent(getReturnTo());
+      window.location.href = '/signup.html?returnTo=' + returnTo;
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await supabase.auth.signOut();
+      } catch(e) {
+        console.warn('Logout error', e);
+      }
+      // show logout message then redirect home
+      try { alert('You have been logged out.'); } catch(e){ /* ignore */ }
+      window.location.href = '/';
+    });
+  }
 
   // show/hide login/signup/logout based on auth state
   const updateAuthUI = async () => {
-    const { data } = await supabase.auth.getUser();
-    const loggedIn = !!data?.user;
-    document.getElementById('btn_login').classList.toggle('hidden', loggedIn);
-    document.getElementById('btn_signup').classList.toggle('hidden', loggedIn);
-    document.getElementById('btn_logout').classList.toggle('hidden', !loggedIn);
+    try {
+      const { data } = await supabase.auth.getUser();
+      const loggedIn = !!data?.user;
+      if (loginBtn) loginBtn.classList.toggle('hidden', loggedIn);
+      if (signupBtn) signupBtn.classList.toggle('hidden', loggedIn);
+      if (logoutBtn) logoutBtn.classList.toggle('hidden', !loggedIn);
+    } catch (err) {
+      // don't break rendering if supabase errors
+      console.warn('updateAuthUI error', err);
+    }
   };
 
   // update cart count
@@ -96,7 +123,52 @@ export function renderHeader() {
   window.addEventListener('storage', () => setCartCount(cartTotalCount()));
 
   updateAuthUI();
-  supabase.auth.onAuthStateChange(() => updateAuthUI());
+  try {
+    supabase.auth.onAuthStateChange(() => updateAuthUI());
+  } catch(e) {
+    // ignore if supabase object not ready
+    console.warn('supabase.onAuthStateChange not available', e);
+  }
+
+  /* Robust fallback wiring: in case IDs differ or header html is replaced later
+     This finds elements by ID, data attributes, or visible text and attaches handlers once.
+  */
+  function returnToEncoded() {
+    return encodeURIComponent(getReturnTo() || '/');
+  }
+
+  function attachIfMatch(el, page) {
+    if (!el || el.dataset?.rsWired) return;
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = '/' + page + '.html?returnTo=' + returnToEncoded();
+    }, { passive: true });
+    el.dataset.rsWired = '1';
+  }
+
+  function findByText(regex) {
+    const all = Array.from(document.querySelectorAll('a,button,[role="button"],input[type="button"]'));
+    return all.find(n => regex.test((n.textContent || n.value || '').trim()));
+  }
+
+  function robustWireLoginSignup() {
+    // priority: explicit IDs or existing variables above
+    attachIfMatch(document.getElementById('btn_login'), 'login');
+    attachIfMatch(document.getElementById('btn_signup'), 'signup');
+
+    // fallback: data attributes if you later add them in markup
+    attachIfMatch(document.querySelector('[data-rs-login]'), 'login');
+    attachIfMatch(document.querySelector('[data-rs-signup]'), 'signup');
+
+    // fallback: visible text matches (exact-ish)
+    attachIfMatch(findByText(/^\s*(login|log in|sign in)\s*$/i), 'login');
+    attachIfMatch(findByText(/^\s*(signup|sign up|register|create account)\s*$/i), 'signup');
+  }
+
+  // initial attempt and observe for dynamic changes
+  robustWireLoginSignup();
+  const mo = new MutationObserver(() => { robustWireLoginSignup(); });
+  mo.observe(document.body, { childList: true, subtree: true });
 }
 
 // Auto-render header on import
