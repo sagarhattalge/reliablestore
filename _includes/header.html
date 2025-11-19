@@ -1,3 +1,4 @@
+<!-- _includes/header.html -->
 <header class="site-topbar" role="banner">
   <div class="wrap topbar-inner">
     <a class="brand" href="/"><img src="/assets/icons/header-logo.png" alt="ReliableStore" class="logo" /></a>
@@ -11,7 +12,10 @@
     </nav>
 
     <div class="header-actions">
-      <a href="/account.html" class="btn-link login-link">Login / Sign Up</a>
+      <!-- Option B: toggle button (deterministic via data attribute) -->
+      <button class="btn-link login-link" data-rs-toggle-login-signup>Login / Sign Up</button>
+
+      <!-- Cart remains an anchor so it can be indexed, etc. -->
       <a href="/cart.html" class="cart">Cart <span id="cart-count">0</span></a>
     </div>
   </div>
