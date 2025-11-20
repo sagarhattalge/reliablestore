@@ -9,6 +9,41 @@
   display: none !important;
 }
 
+/* ===== Modal FIXES (added) ===== */
+
+/* Ensure modal overlay always centers its child */
+#rs-auth-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  display: none; /* JS will toggle flex */
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+  background: rgba(0, 0, 0, 0.45);  /* soft backdrop */
+}
+
+/* Guarantee the panel is visible */
+#rs-auth-modal .rs-modal-panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 420px;
+
+  display: block !important;
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* Prevent animation collapse */
+#rs-auth-modal[aria-hidden="true"] .rs-modal-panel {
+  display: none !important;
+}
+
+/* ====================== */
+
 :root{
   --brand:#FE9900;
   --brand-dark:#d97f00;
@@ -113,4 +148,3 @@ body{
 
 /* Accessibility focus */
 a:focus, button:focus, input:focus {outline:2px solid var(--brand);outline-offset:2px}
-
