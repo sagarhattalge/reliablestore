@@ -105,37 +105,34 @@ async function signUpWithEmail(email, password, metadata = {}) {
      - return JSON { exists: true|false, email?: '...' }
    This keeps DB/service-role access on the server.
 */
-// ---------------------- Check identifier via Edge Function ----------------------
-// Edge function URL (falls back to known project URL if supabase client doesn't expose it)
+// ---------------------- Check identifier via Edge Function (CORS-friendly) ----------------------
+// Edge function URL (use supabase client value if available)
 const SUPABASE_FN_URL = ((supabase && supabase.supabaseUrl) || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
 
-// Use anon key from the supabase client if available, otherwise insert your anon key string here.
-// IMPORTANT: do NOT put the service_role key here — only the anon key is safe to use in browser code.
+// Anon key (safe to expose in browser). If your supabase client already exposes it, that will be used.
 const SUPABASE_ANON_KEY = (supabase && supabase.supabaseKey) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
 
-// Returns: true  -> exists
-//          false -> not found
-//          null  -> error / unknown
+// Returns true if exists, false if not, null on error
 async function checkExistingByEmail(emailOrIdentifier) {
   try {
     const payload = { identifier: String(emailOrIdentifier || '') };
 
     const res = await fetch(SUPABASE_FN_URL, {
       method: 'POST',
+      mode: 'cors',
       headers: {
         'Content-Type': 'application/json',
-        // include anon key so Supabase will allow the function call
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        // only send the anon key as `apikey` — avoids needing Authorization in CORS preflight.
+        'apikey': SUPABASE_ANON_KEY
       },
       body: JSON.stringify(payload),
       credentials: 'omit',
       cache: 'no-store'
     });
 
-    // helpful debug logging if something goes wrong
     if (!res.ok) {
-      const body = await res.text().catch(() => '<no body>');
+      // show body for debug (text for non-json bodies)
+      const body = await res.text().catch(()=>'<no body>');
       console.warn('check-identifier endpoint non-OK', res.status, body);
       return null;
     }
@@ -146,13 +143,15 @@ async function checkExistingByEmail(emailOrIdentifier) {
       return null;
     }
 
-    // data.exists is boolean; return it
     return data.exists;
   } catch (err) {
     console.warn('checkExistingByEmail exception', err);
     return null;
   }
 }
+
+// Optional: expose for manual console testing (remove in production if you prefer)
+window.checkExistingByEmail = checkExistingByEmail;
 
 /* ---------------- modal wiring ---------------- */
 function setupAuthModal() {
