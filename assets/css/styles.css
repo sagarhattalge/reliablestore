@@ -4,6 +4,10 @@
    Brand: #FE9900
    ====================== */
 
+.hidden {
+  display: none !important;
+}
+
 :root{
   --brand:#FE9900;
   --brand-dark:#d97f00;
