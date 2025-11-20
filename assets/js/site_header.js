@@ -3,16 +3,15 @@
 // - Uses Supabase client (imported from /assets/js/supabase_client.js)
 // - Calls Supabase Edge Function CHECK_IDENTIFIER_ENDPOINT via POST and sends only `apikey` header
 // - Keeps service-role keys on server (Edge Function)
-// - Fixes the "white strip" by toggling element.style.display properly when switching steps
-// - Option B behaviour: modal does NOT close when clicking outside; closes only by close button, Cancel, or Escape
+// - Option B behavior: modal does NOT close when clicking outside
 
 import { supabase } from '/assets/js/supabase_client.js';
 
 // Edge function endpoint (deployed)
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
 
-// Use anon key from client (safe to be public) for the Edge Function call
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
+// Use anon key from client (safe to be public). You provided this previously.
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
 
 window.__rs_block_auto_modal = true; // prevent accidental auto-open on page load
 
@@ -48,7 +47,7 @@ function _restorePageAfterModal() {
 }
 
 /* ---------------- modal open/close ---------------- */
-/* Option B behavior: do NOT close on outside click */
+/* Option B behavior: do NOT close on outside click. Modal only closes on explicit close/cancel/escape. */
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) {
@@ -78,6 +77,7 @@ function openModal(opts = {}) {
     }
   }, 80);
 }
+
 function closeModal() {
   const m = $('#rs-auth-modal');
   if (!m) return;
@@ -97,13 +97,11 @@ function closeModal() {
 function showStep(id) {
   $all('.rs-step').forEach(s => {
     s.classList.add('hidden');
-    // hide inline too (some HTML had `style="display:none"`)
     s.style.display = 'none';
   });
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.remove('hidden');
-  // Ensure visible (block-like behaviour). Steps are block-level containers.
   el.style.display = 'block';
 }
 
@@ -125,7 +123,7 @@ async function signUpWithEmail(email, password, metadata = {}) {
 
 /* ---------------- Edge Function: secure identifier check ----------------
    Calls your deployed Edge Function at CHECK_IDENTIFIER_ENDPOINT.
-   The function uses the service role key server-side; browser sends only anon key (apikey header).
+   Browser sends only the anon key (applies to apikey header). Ensure your Function CORS exposes apikey header.
 */
 async function checkExistingByEmail(identifier) {
   try {
@@ -143,7 +141,7 @@ async function checkExistingByEmail(identifier) {
       credentials: 'omit',
       headers: {
         'Content-Type': 'application/json',
-        // Only apikey header — allowed by our Edge Function CORS policy
+        // Only apikey header — Edge Function must allow this in Access-Control-Allow-Headers
         ...(SUPABASE_ANON_KEY ? { 'apikey': SUPABASE_ANON_KEY } : {})
       },
       body: JSON.stringify(payload)
@@ -167,6 +165,7 @@ async function checkExistingByEmail(identifier) {
     return null;
   }
 }
+
 // Expose for quick console testing (optional)
 window.checkExistingByEmail = checkExistingByEmail;
 
@@ -175,7 +174,7 @@ function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal  = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) {
-    // if missing, nothing to wire
+    // nothing to wire
     return;
   }
 
@@ -224,7 +223,6 @@ function setupAuthModal() {
   }));
 
   // NOTE: Option B chosen — DO NOT close modal when clicking outside.
-  // (If you later want outside-click-to-close, add a handler here.)
 
   // ESC to close
   document.addEventListener('keydown', (e) => {
@@ -425,6 +423,7 @@ export function renderHeaderExtras() {
     logoutBtn.addEventListener('click', async (e) => {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
       try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
+      // clear local tokens
       try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
       try { alert('You have been logged out.'); } catch (e) {}
       window.location.href = '/';
