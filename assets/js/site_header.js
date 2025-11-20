@@ -1,16 +1,18 @@
 // assets/js/site_header.js
 // Header + Auth modal client script for ReliableStore
 // - Uses Supabase client (imported from /assets/js/supabase_client.js)
-// - Calls Supabase Edge Function CHECK_IDENTIFIER_ENDPOINT via POST and sends only `apikey` header
+// - Calls Supabase Edge Function CHECK_IDENTIFIER_ENDPOINT via POST and sends both `apikey` and `Authorization` headers
 // - Keeps service-role keys on server (Edge Function)
-// - Option B behavior: modal does NOT close when clicking outside
+// - Fixes the "white strip" by toggling element.style.display properly when switching steps
+// - Option B behaviour: modal does NOT close when clicking outside; closes only by close button, Cancel, or Escape
 
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (deployed)
+// Edge function endpoint (deployed). Uses supabase client url if available, otherwise fallback.
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
 
-// Use anon key from client (safe to be public). You provided this previously.
+// Use anon key from client (safe to be public) for the Edge Function call.
+// If supabase client exports the key, use that, else fallback to the anon key you provided.
 const SUPABASE_ANON_KEY = supabase?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
 
 window.__rs_block_auto_modal = true; // prevent accidental auto-open on page load
@@ -47,7 +49,9 @@ function _restorePageAfterModal() {
 }
 
 /* ---------------- modal open/close ---------------- */
-/* Option B behavior: do NOT close on outside click. Modal only closes on explicit close/cancel/escape. */
+/* Option B behavior: do NOT close on outside click (unless you change it later) */
+let ignoreDocumentClick = false;
+
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) {
@@ -76,6 +80,10 @@ function openModal(opts = {}) {
       try { input.focus(); } catch (e) {}
     }
   }, 80);
+
+  // prevent immediate outside-click closing due to event ordering (if you decide to add outside-click behaviour)
+  ignoreDocumentClick = true;
+  setTimeout(() => { ignoreDocumentClick = false; }, 160);
 }
 
 function closeModal() {
@@ -97,11 +105,13 @@ function closeModal() {
 function showStep(id) {
   $all('.rs-step').forEach(s => {
     s.classList.add('hidden');
+    // also ensure inline display is hidden
     s.style.display = 'none';
   });
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.remove('hidden');
+  // Steps are block-level containers in markup — ensure visible
   el.style.display = 'block';
 }
 
@@ -123,7 +133,8 @@ async function signUpWithEmail(email, password, metadata = {}) {
 
 /* ---------------- Edge Function: secure identifier check ----------------
    Calls your deployed Edge Function at CHECK_IDENTIFIER_ENDPOINT.
-   Browser sends only the anon key (applies to apikey header). Ensure your Function CORS exposes apikey header.
+   The function uses the service role key server-side; browser sends only anon key (apikey header).
+   This patched version sends both apikey and Authorization headers and includes verbose logging.
 */
 async function checkExistingByEmail(identifier) {
   try {
@@ -134,22 +145,45 @@ async function checkExistingByEmail(identifier) {
 
     const payload = { identifier: String(identifier || '') };
 
+    // DEBUG: show endpoint + payload
+    console.log('checkExistingByEmail -> calling edge function', CHECK_IDENTIFIER_ENDPOINT, payload);
+
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    // include anon/apikey header if present (okay to expose anon key)
+    if (SUPABASE_ANON_KEY) {
+      headers['apikey'] = SUPABASE_ANON_KEY;
+      headers['Authorization'] = 'Bearer ' + SUPABASE_ANON_KEY;
+    }
+
+    // DEBUG: show headers we will send (mask sensitive-looking keys)
+    console.log('checkExistingByEmail -> sending headers (masked):',
+      Object.fromEntries(Object.entries(headers).map(([k,v]) => [k, (k.toLowerCase().includes('key') || k.toLowerCase().includes('authorization')) ? '***MASKED***' : v]))
+    );
+
     const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, {
       method: 'POST',
       mode: 'cors',
       cache: 'no-store',
       credentials: 'omit',
-      headers: {
-        'Content-Type': 'application/json',
-        // Only apikey header — Edge Function must allow this in Access-Control-Allow-Headers
-        ...(SUPABASE_ANON_KEY ? { 'apikey': SUPABASE_ANON_KEY } : {})
-      },
+      headers,
       body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => '<no body>');
-      console.warn('check-identifier endpoint non-OK', res.status, body);
+      // try to read body (JSON/text) for a helpful message
+      let bodyText = '<no body>';
+      try {
+        bodyText = await res.text();
+      } catch (e) { /* ignore */ }
+
+      console.warn('check-identifier endpoint non-OK', res.status, bodyText);
+
+      if (res.status === 401) {
+        console.warn('401 from function — check that you are sending anon key (not service_role) and that function CORS allows "apikey" and "authorization".');
+      }
       return null;
     }
 
@@ -158,15 +192,16 @@ async function checkExistingByEmail(identifier) {
       console.warn('check-identifier: unexpected response', json);
       return null;
     }
-    // expected: { exists: boolean, email?: string }
-    return json;
+
+    console.log('checkExistingByEmail -> function response', json);
+    return json; // { exists: boolean, email?: string }
   } catch (err) {
     console.warn('checkExistingByEmail exception', err);
     return null;
   }
 }
 
-// Expose for quick console testing (optional)
+// Expose for quick console testing (optional but helpful)
 window.checkExistingByEmail = checkExistingByEmail;
 
 /* ---------------- modal wiring ---------------- */
@@ -174,7 +209,7 @@ function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal  = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) {
-    // nothing to wire
+    // if missing, nothing to wire
     return;
   }
 
@@ -189,7 +224,7 @@ function setupAuthModal() {
   // Elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext  = document.getElementById('rs-identifier-next');
-  const identifierError  = document.getElementById('rs-identifier-error');
+  const identifierError = document.getElementById('rs-identifier-error');
 
   const knownEmailText  = document.getElementById('rs-known-email');
   const passwordInput   = document.getElementById('rs-password');
@@ -223,6 +258,7 @@ function setupAuthModal() {
   }));
 
   // NOTE: Option B chosen — DO NOT close modal when clicking outside.
+  // If you want outside-click-to-close later, add a handler here (use ignoreDocumentClick to avoid race).
 
   // ESC to close
   document.addEventListener('keydown', (e) => {
@@ -238,6 +274,7 @@ function setupAuthModal() {
 
       if (identifierError) identifierError.textContent = '';
       const raw = (identifierInput?.value || '').trim();
+      console.log('identifierNext clicked — raw value:', raw);
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
       // phone branch
@@ -423,7 +460,7 @@ export function renderHeaderExtras() {
     logoutBtn.addEventListener('click', async (e) => {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
       try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
-      // clear local tokens
+      // clear local tokens (best-effort)
       try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
       try { alert('You have been logged out.'); } catch (e) {}
       window.location.href = '/';
