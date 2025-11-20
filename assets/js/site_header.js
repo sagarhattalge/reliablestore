@@ -1,18 +1,18 @@
 // assets/js/site_header.js
-// Complete header + auth wiring for ReliableStore
-// - Uses Supabase client for signIn/signUp
-// - Uses Supabase Edge Function (check-identifier) for secure existence checks
-// - Safe: no service-role key here
+// Final consolidated header + modal + Supabase Edge Function integration
+// - Uses Edge Function to check identifier existence (prevents exposing service role keys)
+// - Sends only 'Content-Type' and 'apikey' headers to avoid CORS issues
+// - Replace CHECK_IDENTIFIER_ENDPOINT or SUPABASE_ANON_KEY if needed.
 
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (deployed)
-const CHECK_IDENTIFIER_ENDPOINT = 'https://gugcnntetqarewwnzrki.supabase.co/functions/v1/check-identifier';
+// Edge function URL (deployed)
+const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
 
-// Anon key (OK to be public in client)
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
+// Supabase anon key (browser-safe). If your supabase_client exports the anon key, replace this with supabase?.supabaseKey
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
 
-// Prevent accidental auto-open
+// Prevent accidental auto-open on load
 window.__rs_block_auto_modal = true;
 
 /* ---------------- small helpers ---------------- */
@@ -22,8 +22,7 @@ const getReturnTo = () => window.location.pathname + window.location.search + wi
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
 function readCart() {
-  try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
-  catch (e) { return {}; }
+  try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); } catch (e) { return {}; }
 }
 function cartTotalCount() {
   const c = readCart();
@@ -55,7 +54,7 @@ function openModal(opts = {}) {
   const m = $('#rs-auth-modal');
   if (!m) return;
 
-  // ensure proper visual layout
+  // ensure visual centering
   m.style.display = 'flex';
   m.style.alignItems = 'center';
   m.style.justifyContent = 'center';
@@ -65,41 +64,34 @@ function openModal(opts = {}) {
 
   _disablePageForModal();
 
-  // avoid immediate outside click closing due to event order
+  // avoid immediate document click race closing the modal
   ignoreDocumentClick = true;
   setTimeout(() => { ignoreDocumentClick = false; }, 160);
 
-  // focus first input
   setTimeout(() => {
     const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
-    if (input) try { input.focus(); } catch (e) {}
+    if (input) { try { input.focus(); } catch (e) {} }
   }, 80);
 }
 
 function closeModal() {
   const m = $('#rs-auth-modal');
   if (!m) return;
-
   m.classList.add('hidden');
   m.setAttribute('aria-hidden', 'true');
-
-  // hide visually
   m.style.display = 'none';
-
   _restorePageAfterModal();
-
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
 
-/* ---------------- modal step helper ---------------- */
 function showStep(id) {
   $all('.rs-step').forEach(s => s.classList.add('hidden'));
   const el = document.getElementById(id);
   if (el) el.classList.remove('hidden');
 }
 
-/* ---------------- Supabase helpers (client) ---------------- */
+/* ---------------- Supabase auth helpers (client-side) ---------------- */
 async function signInWithPassword(email, password) {
   try {
     return await supabase.auth.signInWithPassword({ email, password });
@@ -116,7 +108,8 @@ async function signUpWithEmail(email, password, metadata = {}) {
 }
 
 /* ---------------- Secure existence check (Edge Function) ----------------
-   Calls your deployed function which returns { exists: boolean, email?: string }
+   The Edge Function should accept POST { identifier } and return JSON { exists: boolean, email?: string }
+   This keeps DB/service role access on the server.
 */
 async function checkExistingByEmail(identifier) {
   try {
@@ -129,26 +122,27 @@ async function checkExistingByEmail(identifier) {
       credentials: 'omit',
       headers: {
         'Content-Type': 'application/json',
-        // apikey header required by your Edge Function CORS rules
+        // send only apikey to satisfy Supabase function auth + CORS (avoid Authorization header)
         'apikey': SUPABASE_ANON_KEY
       },
       body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
-      // log helpful info
-      const body = await res.text().catch(() => '<no body>');
-      console.warn('check-identifier endpoint non-OK', res.status, body);
-      return null;
+      // read body to help debugging
+      const txt = await res.text().catch(() => '<no body>');
+      console.warn('check-identifier endpoint non-OK', res.status, txt);
+      // return false (not found) for 404-like responses, null for other unexpected errors; we'll return false to fallback to signup flow
+      return false;
     }
 
     const json = await res.json().catch(() => null);
     if (!json || typeof json.exists !== 'boolean') {
-      console.warn('check-identifier: unexpected response', json);
-      return null;
+      console.warn('check-identifier returned unexpected payload', json);
+      return false;
     }
 
-    // returns object { exists: boolean, email?: string }
+    // returns { exists: boolean, email?: string }
     return json;
   } catch (err) {
     console.warn('checkExistingByEmail exception', err);
@@ -156,19 +150,16 @@ async function checkExistingByEmail(identifier) {
   }
 }
 
-// expose for quick manual console testing (optional)
+// expose for console testing
 window.checkExistingByEmail = checkExistingByEmail;
 
 /* ---------------- modal wiring ---------------- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
-  const modal = document.getElementById('rs-auth-modal');
-  if (!toggle || !modal) {
-    // nothing to wire
-    return;
-  }
+  const modal  = document.getElementById('rs-auth-modal');
+  if (!toggle || !modal) return;
 
-  // defensive visual defaults
+  // defensive modal layout
   modal.style.position = modal.style.position || 'fixed';
   modal.style.inset = modal.style.inset || '0';
   modal.style.display = modal.style.display || 'none';
@@ -176,27 +167,27 @@ function setupAuthModal() {
   modal.style.alignItems = modal.style.alignItems || 'center';
   modal.style.justifyContent = modal.style.justifyContent || 'center';
 
-  // elements
+  // form controls
   const identifierInput = document.getElementById('rs-identifier');
-  const identifierNext = document.getElementById('rs-identifier-next');
-  const identifierError = document.getElementById('rs-identifier-error');
+  const identifierNext  = document.getElementById('rs-identifier-next');
+  const identifierError  = document.getElementById('rs-identifier-error');
 
-  const knownEmailText = document.getElementById('rs-known-email');
-  const passwordInput = document.getElementById('rs-password');
-  const signinBtn = document.getElementById('rs-signin-btn');
-  const passwordError = document.getElementById('rs-password-error');
-  const backToEnter = document.getElementById('rs-back-to-enter');
+  const knownEmailText  = document.getElementById('rs-known-email');
+  const passwordInput   = document.getElementById('rs-password');
+  const signinBtn       = document.getElementById('rs-signin-btn');
+  const passwordError   = document.getElementById('rs-password-error');
+  const backToEnter     = document.getElementById('rs-back-to-enter');
 
-  const signupEmail = document.getElementById('rs-signup-email');
-  const signupName = document.getElementById('rs-signup-name');
-  const signupPassword = document.getElementById('rs-signup-password');
-  const signupBtn = document.getElementById('rs-signup-btn');
-  const signupError = document.getElementById('rs-signup-error');
-  const cancelSignup = document.getElementById('rs-cancel-signup');
+  const signupEmail     = document.getElementById('rs-signup-email');
+  const signupName      = document.getElementById('rs-signup-name');
+  const signupPassword  = document.getElementById('rs-signup-password');
+  const signupBtn       = document.getElementById('rs-signup-btn');
+  const signupError     = document.getElementById('rs-signup-error');
+  const cancelSignup    = document.getElementById('rs-cancel-signup');
 
   const closeBtns = $all('[data-rs-close]');
 
-  // Open modal (force bypass guard)
+  // open modal
   toggle.addEventListener('click', (e) => {
     try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
     openModal({ force: true });
@@ -205,53 +196,49 @@ function setupAuthModal() {
     if (identifierError) identifierError.textContent = '';
   });
 
-  // close via close buttons/backdrop
+  // close handlers (close icon / Cancel)
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     closeModal();
   }));
 
-  // close when clicking outside panel (but avoid immediate race after open)
-  document.addEventListener('mousedown', (ev) => {
-    if (ignoreDocumentClick) return;
-    try {
-      const m = document.getElementById('rs-auth-modal');
-      if (!m || m.classList.contains('hidden')) return;
-      const panel = m.querySelector('.rs-modal-panel');
-      if (!panel) return;
-      if (!panel.contains(ev.target)) closeModal();
-    } catch (e) {}
-  });
+  // outside click: (Option B chosen) — do NOT close on accidental outside click while in steps.
+  // We will keep outside click *disabled* to avoid confusing the user:
+  // (If you later prefer outside clicks to close, replace with panel.contains logic.)
+  // NOTE: to keep behavior safe, we won't close on outside clicks here.
 
   // ESC to close
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
 
-  // Back button inside modal
-  if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch (_) {} showStep('rs-step-enter'); });
+  // back button
+  backToEnter?.addEventListener('click', (e) => {
+    try { e.preventDefault(); } catch (_) {}
+    showStep('rs-step-enter');
+  });
 
-  // Identifier -> determine existing/new using Edge Function
-  if (identifierNext) identifierNext.addEventListener('click', async (e) => {
+  // identifier -> check function
+  identifierNext?.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
       if (identifierError) identifierError.textContent = '';
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // phone branch (digits only)
+      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
         identifierNext.disabled = false;
-        if (!res) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
+        if (res === null) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
         if (res.exists && res.email) {
           knownEmailText.textContent = res.email;
           passwordInput && (passwordInput.value = '');
           showStep('rs-step-password');
           return;
         } else if (res.exists) {
-          // exists but no email returned -> show password step
+          // exists but no public email returned
           showStep('rs-step-password');
           return;
         } else {
@@ -272,11 +259,7 @@ function setupAuthModal() {
       identifierNext.disabled = true;
       const res = await checkExistingByEmail(email);
       identifierNext.disabled = false;
-
-      if (!res) {
-        if (identifierError) identifierError.textContent = 'Unable to check right now';
-        return;
-      }
+      if (res === null) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
 
       if (res.exists) {
         if (knownEmailText) knownEmailText.textContent = res.email || email;
@@ -297,7 +280,7 @@ function setupAuthModal() {
   });
 
   // Sign in
-  if (signinBtn) signinBtn.addEventListener('click', async (e) => {
+  signinBtn?.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
       if (passwordError) passwordError.textContent = '';
@@ -313,7 +296,7 @@ function setupAuthModal() {
         return;
       }
 
-      // optionally set session if returned
+      // set session if returned
       try {
         if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
@@ -334,7 +317,7 @@ function setupAuthModal() {
   });
 
   // Sign up
-  if (signupBtn) signupBtn.addEventListener('click', async (e) => {
+  signupBtn?.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
       if (signupError) signupError.textContent = '';
@@ -362,7 +345,7 @@ function setupAuthModal() {
     }
   });
 
-  if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch (_) {} showStep('rs-step-enter'); });
+  if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 }
 
 /* ---------------- header extras (cart + auth UI) ---------------- */
