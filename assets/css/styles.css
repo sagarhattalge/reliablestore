@@ -4,6 +4,7 @@
    Brand: #FE9900
    ====================== */
 
+/* Fix for modal auto-show */
 .hidden {
   display: none !important;
 }
