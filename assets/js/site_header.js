@@ -37,23 +37,17 @@ function _restorePageAfterModal() {
 }
 
 /* ---------------- modal open/close ---------------- */
-/*
- openModal({force:true}) -> force open despite guard
- openModal() -> opens only if guard allows
-*/
 let ignoreDocumentClick = false;
 
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) {
-    // blocked by guard
     return;
   }
 
   const m = $('#rs-auth-modal');
   if (!m) return;
 
-  // Ensure visual layout
   m.style.display = 'flex';
   m.style.alignItems = 'center';
   m.style.justifyContent = 'center';
@@ -63,22 +57,15 @@ function openModal(opts = {}) {
 
   _disablePageForModal();
 
-  // Ignore the immediate document click after open (prevents race close)
   ignoreDocumentClick = true;
   setTimeout(() => { ignoreDocumentClick = false; }, 160);
 
-  // ensure the visible step is displayed (in case inline styles existed)
   const currentVisible = m.querySelector('.rs-step:not(.hidden)');
-  if (currentVisible) {
-    currentVisible.style.display = 'block';
-  }
+  if (currentVisible) currentVisible.style.display = 'block';
 
-  // focus first input (small delay to ensure visible)
   setTimeout(() => {
     const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
-    if (input) {
-      try { input.focus(); } catch (e) {}
-    }
+    if (input) try { input.focus(); } catch (e) {}
   }, 90);
 }
 
@@ -88,8 +75,6 @@ function closeModal() {
 
   m.classList.add('hidden');
   m.setAttribute('aria-hidden', 'true');
-
-  // hide visually
   m.style.display = 'none';
 
   _restorePageAfterModal();
@@ -99,39 +84,63 @@ function closeModal() {
 }
 
 /* ---------------- modal step helper ---------------- */
-/*
- Updated to explicitly manage inline style.display so hidden/visible are consistent.
- This fixes the "white strip" issue caused by inline `display:none` present in HTML.
-*/
 function showStep(id) {
   const steps = $all('.rs-step');
   steps.forEach(s => {
     s.classList.add('hidden');
-    try { s.style.display = 'none'; } catch (e) {}
+    try { s.style.display = 'none'; } catch (_) {}
   });
-
   const el = document.getElementById(id);
   if (el) {
     el.classList.remove('hidden');
-    // set to block so the content is visible inside modal-panel
-    try { el.style.display = 'block'; } catch (e) {}
+    try { el.style.display = 'block'; } catch (_) {}
   }
 }
 
 /* ---------------- Supabase helpers ---------------- */
+/*
+  Robust check: try exact match (.eq) first, then case-insensitive (.ilike) as a fallback.
+  Returns:
+   - true  => customer exists
+   - false => not found
+   - null  => error / unknown
+*/
 async function checkExistingByEmail(email) {
+  const trimmed = (email || '').trim();
+  if (!trimmed) return false;
+
   try {
-    const { data, error } = await supabase
+    // 1) Exact match
+    const exact = await supabase
       .from('customers')
       .select('id,email')
-      .eq('email', email)
+      .eq('email', trimmed)
       .limit(1)
       .maybeSingle();
-    if (error) {
-      console.warn('customers table check error', error);
-      return null;
+
+    console.log('checkExistingByEmail - exact result:', exact);
+
+    if (!exact.error && exact.data) {
+      return true;
     }
-    return !!data;
+
+    // 2) Case-insensitive fallback (ilike)
+    // ilike expects a pattern; for exact-case-insensitive match use same string
+    const ilikeRes = await supabase
+      .from('customers')
+      .select('id,email')
+      .ilike('email', trimmed)
+      .limit(1)
+      .maybeSingle();
+
+    console.log('checkExistingByEmail - ilike result:', ilikeRes);
+
+    if (!ilikeRes.error && ilikeRes.data) {
+      return true;
+    }
+
+    // not found
+    return false;
   } catch (err) {
     console.warn('checkExistingByEmail exception', err);
     return null;
@@ -189,7 +198,6 @@ function setupAuthModal() {
 
   const closeBtns       = $all('[data-rs-close]');
 
-  // Open modal on toggle click
   toggle.addEventListener('click', (e) => {
     try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
     openModal({ force: true });
@@ -198,13 +206,11 @@ function setupAuthModal() {
     if (identifierError) identifierError.textContent = '';
   });
 
-  // close via close buttons/backdrop
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     closeModal();
   }));
 
-  // document-level outside click (mouse down) — will close only if click outside panel and not during immediate post-open
   document.addEventListener('mousedown', (ev) => {
     if (ignoreDocumentClick) return;
     const m = $('#rs-auth-modal');
@@ -214,20 +220,19 @@ function setupAuthModal() {
     if (!panel.contains(ev.target)) closeModal();
   });
 
-  // ESC to close
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
 
-  // Back button
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  // Identifier next
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
       if (identifierError) identifierError.textContent = '';
       const raw = (identifierInput?.value || '').trim();
+      console.log('identifierNext clicked — raw value:', raw);
+
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
       // Phone branch
@@ -239,6 +244,7 @@ function setupAuthModal() {
             .eq('phone', raw)
             .limit(1)
             .maybeSingle();
+          console.log('phone lookup result:', { data, error });
           if (error) { if (identifierError) identifierError.textContent = 'Could not check phone right now'; return; }
           if (data && data.email) {
             if (knownEmailText) knownEmailText.textContent = data.email;
@@ -254,6 +260,7 @@ function setupAuthModal() {
             return;
           }
         } catch (err) {
+          console.warn('phone lookup exception', err);
           if (identifierError) identifierError.textContent = 'Unable to check right now';
           return;
         }
@@ -267,6 +274,8 @@ function setupAuthModal() {
       const exists = await checkExistingByEmail(email);
       identifierNext.disabled = false;
 
+      console.log('checkExistingByEmail returned:', exists);
+
       if (exists === true) {
         if (knownEmailText) knownEmailText.textContent = email;
         passwordInput && (passwordInput.value = '');
@@ -279,7 +288,7 @@ function setupAuthModal() {
         showStep('rs-step-signup');
         signupPassword && signupPassword.focus();
       } else {
-        // unknown -> ask password (fallback)
+        // unknown fallback -> prompt password
         if (knownEmailText) knownEmailText.textContent = email;
         passwordInput && (passwordInput.value = '');
         showStep('rs-step-password');
@@ -290,7 +299,6 @@ function setupAuthModal() {
     }
   });
 
-  // Sign in
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -307,7 +315,6 @@ function setupAuthModal() {
         return;
       }
 
-      // if session data returned, optionally set it (safe)
       try {
         if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
@@ -327,7 +334,6 @@ function setupAuthModal() {
     }
   });
 
-  // Sign up
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
