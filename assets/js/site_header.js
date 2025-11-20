@@ -105,50 +105,49 @@ async function signUpWithEmail(email, password, metadata = {}) {
      - return JSON { exists: true|false, email?: '...' }
    This keeps DB/service-role access on the server.
 */
-// ---------------------- Check identifier via Edge Function (CORS-friendly) ----------------------
-// Edge function URL (use supabase client value if available)
-const SUPABASE_FN_URL = ((supabase && supabase.supabaseUrl) || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
+// ---------- checkExistingByEmail (Edge Function) ----------
+const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
+// Use anon key from your client. It's okay for browser-visible calls.
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
 
-// Anon key (safe to expose in browser). If your supabase client already exposes it, that will be used.
-const SUPABASE_ANON_KEY = (supabase && supabase.supabaseKey) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
-
-// Returns true if exists, false if not, null on error
-async function checkExistingByEmail(emailOrIdentifier) {
+async function checkExistingByEmail(identifier) {
   try {
-    const payload = { identifier: String(emailOrIdentifier || '') };
+    const payload = { identifier: String(identifier || '') };
 
-    const res = await fetch(SUPABASE_FN_URL, {
+    const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, {
       method: 'POST',
       mode: 'cors',
+      cache: 'no-store',
+      credentials: 'omit',
       headers: {
         'Content-Type': 'application/json',
-        // only send the anon key as `apikey` — avoids needing Authorization in CORS preflight.
+        // only send apikey header — function accepts this
         'apikey': SUPABASE_ANON_KEY
       },
-      body: JSON.stringify(payload),
-      credentials: 'omit',
-      cache: 'no-store'
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
-      // show body for debug (text for non-json bodies)
-      const body = await res.text().catch(()=>'<no body>');
+      // try to read JSON body, else text
+      const body = await res.text().catch(() => '<no body>');
       console.warn('check-identifier endpoint non-OK', res.status, body);
-      return null;
+      return false;
     }
 
-    const data = await res.json().catch(() => null);
-    if (!data || typeof data.exists !== 'boolean') {
-      console.warn('checkExistingByEmail - unexpected function response', data);
-      return null;
+    const json = await res.json().catch(() => null);
+    if (!json || typeof json.exists !== 'boolean') {
+      console.warn('check-identifier: unexpected response', json);
+      return false;
     }
 
-    return data.exists;
+    // json: { exists: boolean, email?: string }
+    return json;
   } catch (err) {
     console.warn('checkExistingByEmail exception', err);
     return null;
   }
 }
+
 
 // Optional: expose for manual console testing (remove in production if you prefer)
 window.checkExistingByEmail = checkExistingByEmail;
