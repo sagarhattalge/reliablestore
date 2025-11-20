@@ -14,157 +14,80 @@
       <a href="/about.html">About</a>
     </nav>
 
-    <!-- Login / Cart / Logout -->
+    <!-- header actions: login/logout/cart -->
     <div id="rs-header-actions" class="header-actions" style="display:flex;gap:8px;align-items:center">
+      <!-- Login toggle (opens modal) -->
       <button id="rs-header-login-toggle"
+              data-rs-login
               class="btn-link login-link"
+              style="background:transparent;border:1px solid #ddd;padding:7px 10px;border-radius:8px;cursor:pointer"
               aria-haspopup="dialog"
-              aria-controls="rs-auth-modal"
-              style="background:transparent;border:1px solid #ddd;padding:7px 10px;border-radius:8px;cursor:pointer">
+              aria-controls="rs-auth-modal">
         Login / Sign Up
       </button>
 
+      <!-- Logout (hidden until JS shows it) -->
       <button id="rs-logout-btn"
-              style="display:none;padding:7px 10px;border-radius:8px;background:#FE9900;color:#fff;border:0;cursor:pointer">
+              class="btn-link"
+              style="display:none;padding:7px 10px;border-radius:8px;background:#FE9900;color:#fff;border:0;cursor:pointer"
+              aria-hidden="true">
         Logout
       </button>
 
-      <a href="/cart.html"
-         class="cart"
-         style="padding:7px 10px;border-radius:8px;background:#fff;border:1px solid #ddd;text-decoration:none">
+      <!-- Cart -->
+      <a href="/cart.html" class="cart" style="padding:7px 10px;border-radius:8px;background:#fff;border:1px solid #ddd;text-decoration:none">
         Cart <span id="cart-count">0</span>
       </a>
     </div>
   </div>
 
-  <!-- ============================= -->
-  <!-- AUTH MODAL (FINAL VERSION)    -->
-  <!-- ============================= -->
+  <!-- Auth Modal (present in HTML so every page has it) -->
   <div id="rs-auth-modal"
        class="rs-modal hidden"
        aria-hidden="true"
        role="dialog"
        aria-labelledby="rs-auth-title"
-       style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:1200;">
+       style="position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center;display:none">
+    <div class="rs-modal-backdrop" data-rs-close style="position:absolute;inset:0;background:rgba(0,0,0,0.45)"></div>
+    <div class="rs-modal-panel" role="document" aria-modal="true" style="position:relative;background:#fff;border-radius:10px;padding:18px;max-width:420px;width:94%;box-shadow:0 20px 50px rgba(0,0,0,0.2)">
+      <button class="rs-modal-close" data-rs-close aria-label="Close" style="position:absolute;right:8px;top:6px;border:none;background:transparent;font-size:20px;cursor:pointer">×</button>
 
-    <div class="rs-modal-backdrop"
-         style="position:absolute;inset:0;background:rgba(0,0,0,0.45)">
-    </div>
-
-    <div class="rs-modal-panel"
-         role="document"
-         aria-modal="true"
-         style="position:relative;background:#fff;border-radius:10px;padding:18px;max-width:420px;width:94%;box-shadow:0 20px 50px rgba(0,0,0,0.2)">
-
-      <button class="rs-modal-close"
-              data-rs-close
-              aria-label="Close"
-              style="position:absolute;right:8px;top:6px;border:none;background:transparent;font-size:20px;cursor:pointer">×</button>
-
-      <!-- STEP 1 — ENTER EMAIL OR PHONE -->
+      <!-- Step A: ask for email or phone -->
       <div id="rs-step-enter" class="rs-step">
         <h3 id="rs-auth-title" style="margin:0 0 6px 0">Sign in or create account</h3>
         <p style="margin:0 0 10px;color:#666">Enter your mobile number or email</p>
-
-        <input id="rs-identifier"
-               type="text"
-               placeholder="Email or mobile number"
-               aria-label="Email or mobile"
-               style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd"/>
-
+        <input id="rs-identifier" type="text" placeholder="Email or mobile number" aria-label="Email or mobile" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef"/>
         <div style="margin-top:10px;display:flex;gap:8px">
-          <button id="rs-identifier-next"
-                  class="rs-btn"
-                  style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">
-            Continue
-          </button>
-          <button data-rs-close
-                  class="rs-btn ghost"
-                  style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">
-            Cancel
-          </button>
+          <button id="rs-identifier-next" class="rs-btn" style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Continue</button>
+          <button class="rs-btn ghost" data-rs-close style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Cancel</button>
         </div>
-
-        <div id="rs-identifier-error"
-             style="color:#b00020;margin-top:8px"></div>
+        <div id="rs-identifier-error" class="rs-error" style="color:#b00020;margin-top:8px"></div>
       </div>
 
-      <!-- STEP 2 — EXISTING USER PASSWORD -->
+      <!-- Step B: existing user -> ask password -->
       <div id="rs-step-password" class="rs-step hidden" style="display:none">
         <h3 style="margin:0 0 6px 0">Sign in</h3>
-
-        <div id="rs-known-email"
-             style="color:#666;margin-bottom:8px"></div>
-
-        <input id="rs-password"
-               type="password"
-               placeholder="Password"
-               aria-label="Password"
-               style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd"/>
-
+        <div id="rs-known-email" style="color:#666;margin-bottom:8px"></div>
+        <input id="rs-password" type="password" placeholder="Password" aria-label="Password" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef"/>
         <div style="margin-top:10px;display:flex;gap:8px">
-          <button id="rs-signin-btn"
-                  class="rs-btn"
-                  style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">
-            Sign in
-          </button>
-
-          <button id="rs-go-signup"
-                  class="rs-btn ghost"
-                  style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">
-            Create account
-          </button>
+          <button id="rs-signin-btn" class="rs-btn" style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Sign in</button>
+          <button id="rs-go-signup" class="rs-btn ghost" style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Create account</button>
         </div>
-
-        <div id="rs-password-error"
-             style="color:#b00020;margin-top:8px"></div>
-
-        <div style="margin-top:8px">
-          <button id="rs-back-to-enter"
-                  style="background:transparent;border:none;color:#666;cursor:pointer">
-            Back
-          </button>
-        </div>
+        <div id="rs-password-error" class="rs-error" style="color:#b00020;margin-top:8px"></div>
+        <div style="margin-top:8px"><button id="rs-back-to-enter" style="background:transparent;border:none;color:#666;cursor:pointer">Back</button></div>
       </div>
 
-      <!-- STEP 3 — NEW USER SIGN UP -->
+      <!-- Step C: new user -> signup form -->
       <div id="rs-step-signup" class="rs-step hidden" style="display:none">
         <h3 style="margin:0 0 6px 0">Create account</h3>
-
-        <input id="rs-signup-email"
-               type="email"
-               placeholder="Email"
-               aria-label="Email"
-               style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;margin-bottom:6px"/>
-
-        <input id="rs-signup-name"
-               type="text"
-               placeholder="Full name"
-               aria-label="Full name"
-               style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;margin-bottom:6px"/>
-
-        <input id="rs-signup-password"
-               type="password"
-               placeholder="Password (min 6 chars)"
-               aria-label="Password"
-               style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd"/>
-
+        <input id="rs-signup-email" type="email" placeholder="Email" aria-label="Email" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef;margin-bottom:6px"/>
+        <input id="rs-signup-name" type="text" placeholder="Full name" aria-label="Full name" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef;margin-bottom:6px"/>
+        <input id="rs-signup-password" type="password" placeholder="Password (min 6 chars)" aria-label="Password" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef"/>
         <div style="margin-top:10px;display:flex;gap:8px">
-          <button id="rs-signup-btn"
-                  class="rs-btn"
-                  style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">
-            Create account
-          </button>
-
-          <button id="rs-cancel-signup"
-                  class="rs-btn ghost"
-                  style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">
-            Cancel
-          </button>
+          <button id="rs-signup-btn" class="rs-btn" style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Create account</button>
+          <button id="rs-cancel-signup" class="rs-btn ghost" style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Cancel</button>
         </div>
-
-        <div id="rs-signup-error"
-             style="color:#b00020;margin-top:8px"></div>
+        <div id="rs-signup-error" class="rs-error" style="color:#b00020;margin-top:8px"></div>
       </div>
 
     </div>
