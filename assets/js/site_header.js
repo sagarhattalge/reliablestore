@@ -1,14 +1,14 @@
 // assets/js/site_header.js
-// Final cleaned version — uses Supabase Edge Function for secure identifier checks.
-// IMPORTANT: Do NOT put service-role keys in this file.
+// Final version — Uses Supabase Edge Function (check-identifier) for secure existence checks.
+// Keeps client-side Supabase for signin/signup only.
+// NOTE: do not put any service-role keys here.
 
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (deployed)
-const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
-
-// Use the public anon key (acceptable for browser). Supabase client often exposes this as supabase.supabaseKey
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
+// Edge function URL (deployed) - change only if your function endpoint is different
+const CHECK_IDENTIFIER_ENDPOINT =
+  (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') +
+  '/functions/v1/check-identifier';
 
 // Prevent accidental auto-open
 window.__rs_block_auto_modal = true;
@@ -19,6 +19,7 @@ const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
+/* ---------------- cart helpers ---------------- */
 function readCart() {
   try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
   catch(e) { return {}; }
@@ -46,6 +47,7 @@ function _restorePageAfterModal() {
 
 /* ---------------- modal open/close ---------------- */
 let ignoreDocumentClick = false;
+
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) return;
@@ -56,20 +58,25 @@ function openModal(opts = {}) {
   m.style.display = 'flex';
   m.style.alignItems = 'center';
   m.style.justifyContent = 'center';
+
   m.classList.remove('hidden');
   m.removeAttribute('aria-hidden');
 
   _disablePageForModal();
 
-  // prevent immediate outside-click closing due to event order
+  // Prevent immediate outside-click closing due to event order
   ignoreDocumentClick = true;
   setTimeout(() => { ignoreDocumentClick = false; }, 160);
 
+  // focus first input after a short delay
   setTimeout(() => {
     const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
-    if (input) try { input.focus(); } catch (e) {}
+    if (input) {
+      try { input.focus(); } catch (_) {}
+    }
   }, 80);
 }
+
 function closeModal() {
   const m = $('#rs-auth-modal');
   if (!m) return;
@@ -80,6 +87,8 @@ function closeModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
+
+/* ---------------- modal step helper ---------------- */
 function showStep(id) {
   $all('.rs-step').forEach(s => s.classList.add('hidden'));
   const el = document.getElementById(id);
@@ -103,30 +112,30 @@ async function signUpWithEmail(email, password, metadata = {}) {
 }
 
 /* ---------------- Secure existence check (Edge Function) ----------------
-   Edge function should accept POST { identifier } and return { exists: boolean, email?: string }.
-   We send both apikey and Authorization to support different supabase configs.
+   The Edge Function should:
+     - accept POST { identifier: '...' }
+     - return JSON { exists: boolean, email?: '...' }
+   The browser should NOT send api/service keys to the function.
 */
+// Client-side function that calls your Edge Function (no secret headers)
 async function checkExistingByEmail(identifier) {
   try {
-    const payload = { identifier: String(identifier || '') };
-
     const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+        // intentionally no apikey/authorization header here
+      },
+      body: JSON.stringify({ identifier: String(identifier || '') }),
       mode: 'cors',
       cache: 'no-store',
-      credentials: 'omit',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify(payload)
+      credentials: 'omit'
     });
 
     if (!res.ok) {
-      // read JSON if available for better diagnostics
-      const txt = await res.text().catch(() => '<no body>');
-      console.warn('check-identifier endpoint non-OK', res.status, txt);
+      // try to read JSON body, else fallback to text
+      const body = await res.text().catch(() => '<no body>');
+      console.warn('check-identifier endpoint non-OK', res.status, body);
       return null;
     }
 
@@ -141,15 +150,20 @@ async function checkExistingByEmail(identifier) {
     return null;
   }
 }
-// expose for testing in console
+
+// expose for console testing (optional)
 window.checkExistingByEmail = checkExistingByEmail;
 
 /* ---------------- modal wiring ---------------- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
-  if (!toggle || !modal) return;
+  if (!toggle || !modal) {
+    // nothing to wire
+    return;
+  }
 
+  // defensively set modal styles for centering
   modal.style.position = modal.style.position || 'fixed';
   modal.style.inset = modal.style.inset || '0';
   modal.style.display = modal.style.display || 'none';
@@ -157,7 +171,7 @@ function setupAuthModal() {
   modal.style.alignItems = modal.style.alignItems || 'center';
   modal.style.justifyContent = modal.style.justifyContent || 'center';
 
-  // Elements
+  // elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext = document.getElementById('rs-identifier-next');
   const identifierError = document.getElementById('rs-identifier-error');
@@ -177,6 +191,7 @@ function setupAuthModal() {
 
   const closeBtns = $all('[data-rs-close]');
 
+  // Open modal (force bypass guard)
   toggle.addEventListener('click', (e) => {
     try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
     openModal({ force: true });
@@ -185,11 +200,13 @@ function setupAuthModal() {
     if (identifierError) identifierError.textContent = '';
   });
 
+  // close via backdrop and close buttons
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     closeModal();
   }));
 
+  // close when clicking outside panel (but avoid click race immediately after open)
   document.addEventListener('mousedown', (ev) => {
     if (ignoreDocumentClick) return;
     try {
@@ -201,13 +218,15 @@ function setupAuthModal() {
     } catch (e) {}
   });
 
+  // ESC to close
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
 
+  // Back button
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  // Identifier -> check existence via Edge Function
+  // Identifier -> determine existing/new using Edge Function
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -215,31 +234,56 @@ function setupAuthModal() {
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // treat purely digits as phone (basic)
-      const isPhone = /^\d{10,}$/.test(raw);
+      // Mobile / phone branch (digits-only, min 10)
+      if (/^\d{10,}$/.test(raw)) {
+        identifierNext.disabled = true;
+        const res = await checkExistingByEmail(raw);
+        identifierNext.disabled = false;
+        if (res === null) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
+        if (res.exists && res.email) {
+          knownEmailText.textContent = res.email;
+          passwordInput && (passwordInput.value = '');
+          showStep('rs-step-password');
+          return;
+        } else if (res.exists) {
+          // exists but no email returned - fallback to password step
+          showStep('rs-step-password');
+          return;
+        } else {
+          // not found -> signup
+          signupEmail && (signupEmail.value = '');
+          signupName && (signupName.value = '');
+          signupPassword && (signupPassword.value = '');
+          showStep('rs-step-signup');
+          signupEmail && signupEmail.focus();
+          return;
+        }
+      }
+
+      // Email branch
+      const email = raw;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
       identifierNext.disabled = true;
-      const res = await checkExistingByEmail(raw);
+      const res = await checkExistingByEmail(email);
       identifierNext.disabled = false;
 
-      if (!res) {
+      if (res === null) {
         if (identifierError) identifierError.textContent = 'Unable to check right now';
         return;
       }
 
       if (res.exists) {
-        // if we got canonical email back, use it; else fallback to the input
-        const canonical = res.email || raw;
-        if (knownEmailText) knownEmailText.textContent = canonical;
+        if (knownEmailText) knownEmailText.textContent = res.email || email;
         if (passwordInput) passwordInput.value = '';
         showStep('rs-step-password');
+        if (passwordError) passwordError.textContent = '';
       } else {
-        // not found — go to signup
-        if (signupEmail) signupEmail.value = isPhone ? '' : raw;
+        if (signupEmail) signupEmail.value = email;
         if (signupName) signupName.value = '';
         if (signupPassword) signupPassword.value = '';
         showStep('rs-step-signup');
-        signupEmail && signupEmail.focus();
+        signupPassword && signupPassword.focus();
       }
     } catch (err) {
       console.error('identifierNext handler error', err);
@@ -264,7 +308,7 @@ function setupAuthModal() {
         return;
       }
 
-      // if session returned, set it (optional)
+      // set session if returned (optional)
       try {
         if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
