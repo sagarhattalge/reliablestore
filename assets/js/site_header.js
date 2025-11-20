@@ -1,13 +1,13 @@
 // assets/js/site_header.js
 // Header + Auth modal client script for ReliableStore
 // - Uses Supabase client (imported from /assets/js/supabase_client.js)
-// - Calls Supabase Edge Function CHECK_IDENTIFIER_ENDPOINT via POST and sends only `apikey` header
+// - Calls Supabase Edge Function CHECK_IDENTIFIER_ENDPOINT via POST and sends apikey and Authorization headers
 // - Keeps service-role keys on server (Edge Function)
 // - Option B: modal DOES NOT close on outside click; closes only with close/cancel/Escape
 
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (deployed) - update if different
+// Edge function endpoint (deployed)
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
 
 // Use anon key from client (safe to be public) for the Edge Function call
@@ -47,7 +47,7 @@ function _restorePageAfterModal() {
   try { main.inert = false; } catch (e) { main.removeAttribute('aria-hidden'); }
 }
 
-/* ----- open/close modal (Option B: do NOT close on outside click) ----- */
+/* ----- open/close modal (Option B: no outside-click close) ----- */
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) {
@@ -82,7 +82,7 @@ function closeModal() {
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
 
-/* ----- showStep helper - ensures each step's inline display is correct (fixes white strip) ----- */
+/* ----- showStep helper - ensures each step's inline display is correct ----- */
 function showStep(id) {
   $all('.rs-step').forEach(s => {
     s.classList.add('hidden');
@@ -105,7 +105,6 @@ async function signInWithPassword(email, password) {
 }
 async function signUpWithEmail(email, password, metadata = {}) {
   try {
-    // returns { data, error } modern supabase client
     return await supabase.auth.signUp({ email, password, options: { data: metadata }});
   } catch (e) {
     return { error: e };
@@ -119,23 +118,33 @@ async function checkExistingByEmail(identifier) {
       console.warn('CHECK_IDENTIFIER_ENDPOINT not configured');
       return null;
     }
+
     const payload = { identifier: String(identifier || '') };
+
+    // Send both apikey and Authorization: Bearer <anon> - some Supabase function endpoints require Authorization header.
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (SUPABASE_ANON_KEY) {
+      headers['apikey'] = SUPABASE_ANON_KEY;
+      headers['Authorization'] = 'Bearer ' + SUPABASE_ANON_KEY;
+    }
+
     const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, {
       method: 'POST',
       mode: 'cors',
       cache: 'no-store',
       credentials: 'omit',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(SUPABASE_ANON_KEY ? { 'apikey': SUPABASE_ANON_KEY } : {})
-      },
+      headers,
       body: JSON.stringify(payload)
     });
+
     if (!res.ok) {
       const body = await res.text().catch(() => '<no body>');
       console.warn('check-identifier endpoint non-OK', res.status, body);
       return null;
     }
+
     const json = await res.json().catch(() => null);
     if (!json || typeof json.exists !== 'boolean') {
       console.warn('check-identifier: unexpected response', json);
@@ -186,7 +195,8 @@ function setupAuthModal() {
   const confClose       = document.getElementById('rs-confirmation-close');
   const confResend      = document.getElementById('rs-confirmation-resend');
 
-  const closeBtns       = $all('[data-rs-close]');
+  // pick close buttons BUT explicitly exclude the backdrop element (so clicking backdrop won't close)
+  const closeBtns = $all('[data-rs-close]').filter(el => !el.classList.contains('rs-modal-backdrop'));
 
   // open
   toggle.addEventListener('click', (e) => {
@@ -197,7 +207,7 @@ function setupAuthModal() {
     if (identifierError) identifierError.textContent = '';
   });
 
-  // close via buttons (close/x and Cancel)
+  // close via explicit close buttons (not backdrop)
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     closeModal();
@@ -342,11 +352,10 @@ function setupAuthModal() {
         return;
       }
 
-      // Success: do NOT close modal. Show confirmation step so user sees next steps.
+      // Success: show confirmation step (do not auto-close)
       const emailSentTo = email;
       if (confText) confText.textContent = `A confirmation link has been sent to ${emailSentTo}. Please follow it to complete your account.`;
       showStep('rs-step-confirmation');
-      // optionally clear signup form
       if (signupPassword) signupPassword.value = '';
       if (signupAccept) { signupAccept.checked = false; signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
     } catch (err) {
@@ -356,17 +365,13 @@ function setupAuthModal() {
     }
   });
 
-  // Resend confirmation (basic)
+  // Resend confirmation (informational placeholder)
   if (confResend) confResend.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
-      // Supabase's resend confirmation endpoint is not directly exposed in the JS SDK.
-      // A simple approach is to call auth.signUp again which will trigger an email if allowed,
-      // but that may return "user already exists" in some configs. For a safer flow you can
-      // call a server-side endpoint to resend. Here we'll display a temporary message.
       if (confText) {
         const prev = confText.textContent;
-        confText.textContent = 'A new confirmation email request has been sent (if supported).';
+        confText.textContent = 'A new confirmation email request has been triggered (if supported).';
         setTimeout(() => { confText.textContent = prev; }, 4000);
       }
     } catch (err) {
@@ -375,8 +380,6 @@ function setupAuthModal() {
   });
 
   if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
-
-  // cancel signup -> back to entry
   if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 }
 
@@ -433,7 +436,6 @@ export function renderHeaderExtras() {
     });
   } catch (e) { /* ignore */ }
 
-  // initial
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
   if (logoutBtn) {
