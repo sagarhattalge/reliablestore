@@ -11,15 +11,6 @@
 
 import { supabase } from '/assets/js/supabase_client.js';
 
-// HARD-PREVENT modal from opening on page load
-document.addEventListener("DOMContentLoaded", () => {
-  const m = document.getElementById("rs-auth-modal");
-  if (m) {
-    m.classList.add("hidden");
-    m.setAttribute("aria-hidden", "true");
-  }
-});
-
 window.__rs_block_auto_modal = true; // block auto-open unless explicitly forced
 
 /* -------------------- small helpers -------------------- */
