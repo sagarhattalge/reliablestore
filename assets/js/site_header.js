@@ -1,19 +1,20 @@
 // assets/js/site_header.js
-// Final, ready-to-paste file for ReliableStore header/modal + Supabase edge-function check
-// IMPORTANT: do NOT put service-role keys here. Anon key is public and safe for this use.
+// Header + Auth modal client script for ReliableStore
+// - Uses Supabase client (imported from /assets/js/supabase_client.js)
+// - Calls Supabase Edge Function CHECK_IDENTIFIER_ENDPOINT via POST and sends only `apikey` header
+// - Keeps service-role keys on server (Edge Function)
+// - Fixes the "white strip" by toggling element.style.display properly when switching steps
+// - Option B behaviour: modal does NOT close when clicking outside; closes only by close button, Cancel, or Escape
 
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function URL (deployed)
-const CHECK_IDENTIFIER_ENDPOINT =
-  (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') +
-  '/functions/v1/check-identifier';
+// Edge function endpoint (deployed)
+const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
 
-// ANON KEY (public) - replace if you want to use a different anon key
-const SUPABASE_ANON_KEY = supabase?.supabaseKey ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1Z2NubnRldHFhcmV3d256cmtpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0NjEyODEsImV4cCI6MjA3OTAzNzI4MX0.xKcKckmgf1TxbtEGzjHWqjcx-98ni9UdCgvFE9VIwpg';
+// Use anon key from client (safe to be public) for the Edge Function call
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
 
-window.__rs_block_auto_modal = true; // Prevent accidental auto-open
+window.__rs_block_auto_modal = true; // prevent accidental auto-open on page load
 
 /* ---------------- small helpers ---------------- */
 const $ = (sel) => document.querySelector(sel);
@@ -47,29 +48,34 @@ function _restorePageAfterModal() {
 }
 
 /* ---------------- modal open/close ---------------- */
-let ignoreDocumentClick = false;
+/* Option B behavior: do NOT close on outside click */
 function openModal(opts = {}) {
   const force = !!opts.force;
-  if (!force && window.__rs_block_auto_modal) return;
-
+  if (!force && window.__rs_block_auto_modal) {
+    console.debug('openModal blocked by guard');
+    return;
+  }
   const m = $('#rs-auth-modal');
   if (!m) return;
 
+  // Ensure visual layout and centre modal
   m.style.display = 'flex';
   m.style.alignItems = 'center';
   m.style.justifyContent = 'center';
+
+  // remove hidden flag and expose to assistive tech
   m.classList.remove('hidden');
   m.removeAttribute('aria-hidden');
 
+  // inert background for screen readers
   _disablePageForModal();
 
-  // Prevent immediate outside-click closing due to event ordering
-  ignoreDocumentClick = true;
-  setTimeout(() => { ignoreDocumentClick = false; }, 160);
-
+  // focus first focusable element after small delay
   setTimeout(() => {
     const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
-    if (input) try { input.focus(); } catch (e) {}
+    if (input) {
+      try { input.focus(); } catch (e) {}
+    }
   }, 80);
 }
 function closeModal() {
@@ -77,35 +83,58 @@ function closeModal() {
   if (!m) return;
   m.classList.add('hidden');
   m.setAttribute('aria-hidden', 'true');
+
+  // hide visually too
   m.style.display = 'none';
+
   _restorePageAfterModal();
+
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
+
+// showStep: accurately show/hide step panels and set inline display, fixing the white-strip problem
 function showStep(id) {
-  $all('.rs-step').forEach(s => s.classList.add('hidden'));
+  $all('.rs-step').forEach(s => {
+    s.classList.add('hidden');
+    // hide inline too (some HTML had `style="display:none"`)
+    s.style.display = 'none';
+  });
   const el = document.getElementById(id);
-  if (el) el.classList.remove('hidden');
+  if (!el) return;
+  el.classList.remove('hidden');
+  // Ensure visible (block-like behaviour). Steps are block-level containers.
+  el.style.display = 'block';
 }
 
-/* ---------------- Supabase client helpers ---------------- */
+/* ---------------- Supabase client helpers (signin/signup) ---------------- */
 async function signInWithPassword(email, password) {
-  try { return await supabase.auth.signInWithPassword({ email, password }); }
-  catch (e) { return { error: e }; }
+  try {
+    return await supabase.auth.signInWithPassword({ email, password });
+  } catch (e) {
+    return { error: e };
+  }
 }
 async function signUpWithEmail(email, password, metadata = {}) {
-  try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); }
-  catch (e) { return { error: e }; }
+  try {
+    return await supabase.auth.signUp({ email, password, options: { data: metadata }});
+  } catch (e) {
+    return { error: e };
+  }
 }
 
-/* ---------------- Secure existence check (Edge Function) ----------------
-   The Edge Function receives {identifier} and returns { exists: boolean, email?: string }.
-   We call it with anon key provided in 'apikey' and 'Authorization: Bearer ...'.
+/* ---------------- Edge Function: secure identifier check ----------------
+   Calls your deployed Edge Function at CHECK_IDENTIFIER_ENDPOINT.
+   The function uses the service role key server-side; browser sends only anon key (apikey header).
 */
 async function checkExistingByEmail(identifier) {
   try {
+    if (!CHECK_IDENTIFIER_ENDPOINT) {
+      console.warn('CHECK_IDENTIFIER_ENDPOINT not configured');
+      return null;
+    }
+
     const payload = { identifier: String(identifier || '') };
-    console.log('checkExistingByEmail -> calling edge function', CHECK_IDENTIFIER_ENDPOINT, payload);
 
     const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, {
       method: 'POST',
@@ -114,44 +143,43 @@ async function checkExistingByEmail(identifier) {
       credentials: 'omit',
       headers: {
         'Content-Type': 'application/json',
-        // send anon key so the function accepts the call
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+        // Only apikey header — allowed by our Edge Function CORS policy
+        ...(SUPABASE_ANON_KEY ? { 'apikey': SUPABASE_ANON_KEY } : {})
       },
       body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
-      // Try to read JSON body for helpful debug info
-      const bodyText = await res.text().catch(()=>'<no body>');
-      console.warn('check-identifier endpoint non-OK', res.status, bodyText);
-      // treat non-OK as failure -> return null
+      const body = await res.text().catch(() => '<no body>');
+      console.warn('check-identifier endpoint non-OK', res.status, body);
       return null;
     }
 
-    const json = await res.json().catch(()=>null);
+    const json = await res.json().catch(() => null);
     if (!json || typeof json.exists !== 'boolean') {
-      console.warn('check-identifier returned unexpected payload', json);
+      console.warn('check-identifier: unexpected response', json);
       return null;
     }
-
-    console.log('checkExistingByEmail -> function response', json);
+    // expected: { exists: boolean, email?: string }
     return json;
   } catch (err) {
     console.warn('checkExistingByEmail exception', err);
     return null;
   }
 }
-
-// expose for manual testing from console
+// Expose for quick console testing (optional)
 window.checkExistingByEmail = checkExistingByEmail;
 
 /* ---------------- modal wiring ---------------- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
-  const modal = document.getElementById('rs-auth-modal');
-  if (!toggle || !modal) return;
+  const modal  = document.getElementById('rs-auth-modal');
+  if (!toggle || !modal) {
+    // if missing, nothing to wire
+    return;
+  }
 
+  // Defensive visual defaults
   modal.style.position = modal.style.position || 'fixed';
   modal.style.inset = modal.style.inset || '0';
   modal.style.display = modal.style.display || 'none';
@@ -159,87 +187,88 @@ function setupAuthModal() {
   modal.style.alignItems = modal.style.alignItems || 'center';
   modal.style.justifyContent = modal.style.justifyContent || 'center';
 
+  // Elements
   const identifierInput = document.getElementById('rs-identifier');
-  const identifierNext = document.getElementById('rs-identifier-next');
-  const identifierError = document.getElementById('rs-identifier-error');
+  const identifierNext  = document.getElementById('rs-identifier-next');
+  const identifierError  = document.getElementById('rs-identifier-error');
 
-  const knownEmailText = document.getElementById('rs-known-email');
-  const passwordInput = document.getElementById('rs-password');
-  const signinBtn = document.getElementById('rs-signin-btn');
-  const passwordError = document.getElementById('rs-password-error');
-  const backToEnter = document.getElementById('rs-back-to-enter');
+  const knownEmailText  = document.getElementById('rs-known-email');
+  const passwordInput   = document.getElementById('rs-password');
+  const signinBtn       = document.getElementById('rs-signin-btn');
+  const passwordError   = document.getElementById('rs-password-error');
 
-  const signupEmail = document.getElementById('rs-signup-email');
-  const signupName = document.getElementById('rs-signup-name');
-  const signupPassword = document.getElementById('rs-signup-password');
-  const signupBtn = document.getElementById('rs-signup-btn');
-  const signupError = document.getElementById('rs-signup-error');
-  const cancelSignup = document.getElementById('rs-cancel-signup');
+  const backToEnter     = document.getElementById('rs-back-to-enter');
 
-  const closeBtns = $all('[data-rs-close]');
+  const signupEmail     = document.getElementById('rs-signup-email');
+  const signupName      = document.getElementById('rs-signup-name');
+  const signupPassword  = document.getElementById('rs-signup-password');
+  const signupBtn       = document.getElementById('rs-signup-btn');
+  const signupError     = document.getElementById('rs-signup-error');
+  const cancelSignup    = document.getElementById('rs-cancel-signup');
 
+  const closeBtns       = $all('[data-rs-close]');
+
+  // Open modal (force bypass guard)
   toggle.addEventListener('click', (e) => {
-    try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+    try { e.preventDefault(); } catch (_) {}
     openModal({ force: true });
     showStep('rs-step-enter');
     if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); }
     if (identifierError) identifierError.textContent = '';
   });
 
+  // Close via close buttons / cancel
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     closeModal();
   }));
 
-  document.addEventListener('mousedown', (ev) => {
-    if (ignoreDocumentClick) return;
-    try {
-      const m = $('#rs-auth-modal');
-      if (!m || m.classList.contains('hidden')) return;
-      const panel = m.querySelector('.rs-modal-panel');
-      if (!panel) return;
-      if (!panel.contains(ev.target)) closeModal();
-    } catch (e) {}
-  });
+  // NOTE: Option B chosen — DO NOT close modal when clicking outside.
+  // (If you later want outside-click-to-close, add a handler here.)
 
+  // ESC to close
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
 
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
+  // Identifier -> determine existing/new using Edge Function
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
+
       if (identifierError) identifierError.textContent = '';
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // If looks like phone
+      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
         identifierNext.disabled = false;
         if (!res) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
         if (res.exists && res.email) {
-          knownEmailText.textContent = res.email;
-          passwordInput && (passwordInput.value = '');
+          if (knownEmailText) knownEmailText.textContent = res.email;
+          if (passwordInput) passwordInput.value = '';
           showStep('rs-step-password');
           return;
         } else if (res.exists) {
+          // exists but no email returned
           showStep('rs-step-password');
           return;
         } else {
-          signupEmail && (signupEmail.value = '');
-          signupName && (signupName.value = '');
-          signupPassword && (signupPassword.value = '');
+          // not found -> signup
+          if (signupEmail) signupEmail.value = '';
+          if (signupName) signupName.value = '';
+          if (signupPassword) signupPassword.value = '';
           showStep('rs-step-signup');
           signupEmail && signupEmail.focus();
           return;
         }
       }
 
-      // Email branch
+      // email branch
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
@@ -251,7 +280,7 @@ function setupAuthModal() {
 
       if (res.exists) {
         if (knownEmailText) knownEmailText.textContent = res.email || email;
-        passwordInput && (passwordInput.value = '');
+        if (passwordInput) passwordInput.value = '';
         showStep('rs-step-password');
         if (passwordError) passwordError.textContent = '';
       } else {
@@ -284,6 +313,7 @@ function setupAuthModal() {
         return;
       }
 
+      // set session if returned
       try {
         if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
@@ -363,7 +393,7 @@ export function renderHeaderExtras() {
       console.warn('supabase.getUser failed/timeout', e);
     }
 
-    // fallback: local token check
+    // fallback: token check
     try {
       const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token');
       const raw = localStorage.getItem(storageKey);
@@ -388,6 +418,7 @@ export function renderHeaderExtras() {
     });
   } catch (e) { /* ignore */ }
 
+  // initial
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
   if (logoutBtn) {
@@ -405,3 +436,7 @@ export function renderHeaderExtras() {
 document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
+
+// expose open/close for manual testing
+window.openModal = openModal;
+window.closeModal = closeModal;
