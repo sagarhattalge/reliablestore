@@ -42,13 +42,15 @@
   </div>
 
   <!-- Auth Modal (present in HTML so every page has it) -->
-  <div id="rs-auth-modal"
-       class="rs-modal hidden"
-       aria-hidden="true"
-       role="dialog"
-       aria-labelledby="rs-auth-title"
-       style="position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center;display:none">
-    <div class="rs-modal-backdrop" data-rs-close style="position:absolute;inset:0;background:rgba(0,0,0,0.45)"></div>
+  <div id="rs-auth-modal" 
+     class="rs-modal hidden" 
+     aria-hidden="true" 
+     role="dialog" 
+     aria-labelledby="rs-auth-title"
+     style="position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center">
+    <!-- BACKDROP: removed data-rs-close so clicking backdrop will NOT close modal -->
+    <div class="rs-modal-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.45)"></div>
+
     <div class="rs-modal-panel" role="document" aria-modal="true" style="position:relative;background:#fff;border-radius:10px;padding:18px;max-width:420px;width:94%;box-shadow:0 20px 50px rgba(0,0,0,0.2)">
       <button class="rs-modal-close" data-rs-close aria-label="Close" style="position:absolute;right:8px;top:6px;border:none;background:transparent;font-size:20px;cursor:pointer">×</button>
 
@@ -77,17 +79,30 @@
         <div style="margin-top:8px"><button id="rs-back-to-enter" style="background:transparent;border:none;color:#666;cursor:pointer">Back</button></div>
       </div>
 
-      <!-- Step C: new user -> signup form -->
+      <!-- Step C: new user -> signup form (checkbox added) -->
       <div id="rs-step-signup" class="rs-step hidden" style="display:none">
         <h3 style="margin:0 0 6px 0">Create account</h3>
         <input id="rs-signup-email" type="email" placeholder="Email" aria-label="Email" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef;margin-bottom:6px"/>
         <input id="rs-signup-name" type="text" placeholder="Full name" aria-label="Full name" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef;margin-bottom:6px"/>
         <input id="rs-signup-password" type="password" placeholder="Password (min 6 chars)" aria-label="Password" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef"/>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <input id="rs-accept-terms" type="checkbox" style="width:18px;height:18px" />
+          <label for="rs-accept-terms" style="font-size:13px;color:#555">I agree to the <a href="/terms.html" target="_blank">Terms & Conditions</a> and receive account emails</label>
+        </div>
         <div style="margin-top:10px;display:flex;gap:8px">
-          <button id="rs-signup-btn" class="rs-btn" style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Create account</button>
+          <button id="rs-signup-btn" class="rs-btn" disabled style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer;opacity:0.9">Create account</button>
           <button id="rs-cancel-signup" class="rs-btn ghost" style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Cancel</button>
         </div>
         <div id="rs-signup-error" class="rs-error" style="color:#b00020;margin-top:8px"></div>
+      </div>
+
+      <!-- Step D: confirmation after signup -->
+      <div id="rs-step-confirmation" class="rs-step hidden" style="display:none">
+        <h3 style="margin:0 0 6px 0">Account created</h3>
+        <p id="rs-signup-confirmation" style="color:#333;margin-bottom:10px">Check your email for a confirmation link to activate your account. If you don't see the email, check spam.</p>
+        <div style="display:flex;gap:8px">
+          <button id="rs-confirmation-close" class="rs-btn" data-rs-close style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Close</button>
+        </div>
       </div>
 
     </div>
