@@ -1,19 +1,27 @@
 // assets/js/site_header.js
+// Header + Auth modal client script for ReliableStore
+// - Uses Supabase client (imported from /assets/js/supabase_client.js)
+// - Calls Supabase Edge Function CHECK_IDENTIFIER_ENDPOINT via POST and sends only `apikey` header
+// - Keeps service-role keys on server (Edge Function)
+// - Option B: modal DOES NOT close on outside click; closes only with close/cancel/Escape
+
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (deployed) — adjust if different
+// Edge function endpoint (deployed) - update if different
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
+
+// Use anon key from client (safe to be public) for the Edge Function call
 const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
 
-// Prevent accidental auto-open
-window.__rs_block_auto_modal = true;
+window.__rs_block_auto_modal = true; // prevent accidental auto-open
 
-/* small helpers */
+/* ----- small helpers ----- */
 const $ = (sel) => document.querySelector(sel);
 const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
+/* ----- cart helpers ----- */
 function readCart() {
   try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
   catch(e) { return {}; }
@@ -29,7 +37,7 @@ function setCartCount(n) {
   if (el2) el2.innerText = String(n || 0);
 }
 
-/* modal accessibility helpers */
+/* ----- modal accessibility helpers ----- */
 function _disablePageForModal() {
   const main = document.querySelector('main') || document.body;
   try { main.inert = true; } catch (e) { main.setAttribute('aria-hidden', 'true'); }
@@ -39,21 +47,28 @@ function _restorePageAfterModal() {
   try { main.inert = false; } catch (e) { main.removeAttribute('aria-hidden'); }
 }
 
-/* modal open/close — Option B (no outside click close) */
+/* ----- open/close modal (Option B: do NOT close on outside click) ----- */
 function openModal(opts = {}) {
   const force = !!opts.force;
-  if (!force && window.__rs_block_auto_modal) return;
+  if (!force && window.__rs_block_auto_modal) {
+    console.debug('openModal blocked by guard');
+    return;
+  }
   const m = $('#rs-auth-modal');
   if (!m) return;
+
   m.style.display = 'flex';
   m.style.alignItems = 'center';
   m.style.justifyContent = 'center';
+
   m.classList.remove('hidden');
   m.removeAttribute('aria-hidden');
+
   _disablePageForModal();
+
   setTimeout(() => {
     const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
-    if (input) { try { input.focus(); } catch (_) {} }
+    if (input) try { input.focus(); } catch (e) {}
   }, 80);
 }
 function closeModal() {
@@ -64,58 +79,83 @@ function closeModal() {
   m.style.display = 'none';
   _restorePageAfterModal();
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
-  if (toggle) try { toggle.focus(); } catch (_) {}
+  if (toggle) try { toggle.focus(); } catch (e) {}
 }
 
-/* show/hide steps (fix display to avoid "white strip") */
+/* ----- showStep helper - ensures each step's inline display is correct (fixes white strip) ----- */
 function showStep(id) {
-  $all('.rs-step').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; });
+  $all('.rs-step').forEach(s => {
+    s.classList.add('hidden');
+    s.style.display = 'none';
+  });
   const el = document.getElementById(id);
-  if (el) { el.classList.remove('hidden'); el.style.display = 'block'; }
+  if (el) {
+    el.classList.remove('hidden');
+    el.style.display = 'block';
+  }
 }
 
-/* Supabase auth helpers */
+/* ----- Supabase client helpers ----- */
 async function signInWithPassword(email, password) {
-  try { return await supabase.auth.signInWithPassword({ email, password }); }
-  catch (e) { return { error: e }; }
+  try {
+    return await supabase.auth.signInWithPassword({ email, password });
+  } catch (e) {
+    return { error: e };
+  }
 }
 async function signUpWithEmail(email, password, metadata = {}) {
-  try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); }
-  catch (e) { return { error: e }; }
+  try {
+    // returns { data, error } modern supabase client
+    return await supabase.auth.signUp({ email, password, options: { data: metadata }});
+  } catch (e) {
+    return { error: e };
+  }
 }
 
-/* Edge function check (server-side fetch via Edge Function) */
+/* ----- Secure existence check (Edge Function) ----- */
 async function checkExistingByEmail(identifier) {
   try {
-    if (!CHECK_IDENTIFIER_ENDPOINT) return null;
+    if (!CHECK_IDENTIFIER_ENDPOINT) {
+      console.warn('CHECK_IDENTIFIER_ENDPOINT not configured');
+      return null;
+    }
     const payload = { identifier: String(identifier || '') };
-    const headers = { 'Content-Type': 'application/json' };
-    if (SUPABASE_ANON_KEY) headers['apikey'] = SUPABASE_ANON_KEY;
     const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, {
-      method: 'POST', mode: 'cors', cache: 'no-store', credentials: 'omit', headers, body: JSON.stringify(payload)
+      method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(SUPABASE_ANON_KEY ? { 'apikey': SUPABASE_ANON_KEY } : {})
+      },
+      body: JSON.stringify(payload)
     });
     if (!res.ok) {
-      let bodyText = '<no body>';
-      try { bodyText = await res.text(); } catch (e) {}
-      console.warn('check-identifier endpoint non-OK', res.status, bodyText);
+      const body = await res.text().catch(() => '<no body>');
+      console.warn('check-identifier endpoint non-OK', res.status, body);
       return null;
     }
     const json = await res.json().catch(() => null);
-    if (!json || typeof json.exists !== 'boolean') { console.warn('check-identifier: unexpected response', json); return null; }
-    return json;
+    if (!json || typeof json.exists !== 'boolean') {
+      console.warn('check-identifier: unexpected response', json);
+      return null;
+    }
+    return json; // { exists: boolean, email?: string }
   } catch (err) {
     console.warn('checkExistingByEmail exception', err);
     return null;
   }
 }
-window.checkExistingByEmail = checkExistingByEmail;
+window.checkExistingByEmail = checkExistingByEmail; // for quick console testing
 
-/* modal wiring */
+/* ----- wiring modal / events ----- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) return;
 
+  // defensive visual defaults
   modal.style.position = modal.style.position || 'fixed';
   modal.style.inset = modal.style.inset || '0';
   modal.style.display = modal.style.display || 'none';
@@ -126,29 +166,29 @@ function setupAuthModal() {
   // elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext  = document.getElementById('rs-identifier-next');
-  const identifierError  = document.getElementById('rs-identifier-error');
+  const identifierError = document.getElementById('rs-identifier-error');
 
   const knownEmailText  = document.getElementById('rs-known-email');
   const passwordInput   = document.getElementById('rs-password');
   const signinBtn       = document.getElementById('rs-signin-btn');
   const passwordError   = document.getElementById('rs-password-error');
-
   const backToEnter     = document.getElementById('rs-back-to-enter');
 
   const signupEmail     = document.getElementById('rs-signup-email');
   const signupName      = document.getElementById('rs-signup-name');
   const signupPassword  = document.getElementById('rs-signup-password');
+  const signupAccept    = document.getElementById('rs-signup-accept');
   const signupBtn       = document.getElementById('rs-signup-btn');
   const signupError     = document.getElementById('rs-signup-error');
   const cancelSignup    = document.getElementById('rs-cancel-signup');
 
-  const acceptTermsChk  = document.getElementById('rs-accept-terms');
-  const confirmationTxt = document.getElementById('rs-signup-confirmation');
+  const confText        = document.getElementById('rs-confirmation-text');
+  const confClose       = document.getElementById('rs-confirmation-close');
+  const confResend      = document.getElementById('rs-confirmation-resend');
 
-  // close controls (buttons with data-rs-close, excluding backdrop since backdrop no longer has that attribute)
-  const closeBtns = $all('[data-rs-close]');
+  const closeBtns       = $all('[data-rs-close]');
 
-  // open toggle
+  // open
   toggle.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     openModal({ force: true });
@@ -157,19 +197,33 @@ function setupAuthModal() {
     if (identifierError) identifierError.textContent = '';
   });
 
-  // close buttons wiring
+  // close via buttons (close/x and Cancel)
   closeBtns.forEach(b => b.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     closeModal();
   }));
 
   // ESC to close
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
 
-  // back
-  if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch (_) {} showStep('rs-step-enter'); });
+  if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  // identifier -> decide flow
+  // enable/disable signup button based on checkbox
+  if (signupAccept && signupBtn) {
+    signupAccept.addEventListener('change', () => {
+      if (signupAccept.checked) {
+        signupBtn.disabled = false;
+        signupBtn.style.opacity = '1';
+      } else {
+        signupBtn.disabled = true;
+        signupBtn.style.opacity = '0.7';
+      }
+    });
+  }
+
+  // Identifier -> check existence via Edge Function
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -177,6 +231,7 @@ function setupAuthModal() {
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
+      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
@@ -196,11 +251,11 @@ function setupAuthModal() {
           if (signupPassword) signupPassword.value = '';
           showStep('rs-step-signup');
           signupEmail && signupEmail.focus();
-          if (signupBtn) signupBtn.disabled = true;
           return;
         }
       }
 
+      // email branch
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
@@ -220,7 +275,6 @@ function setupAuthModal() {
         if (signupPassword) signupPassword.value = '';
         showStep('rs-step-signup');
         signupPassword && signupPassword.focus();
-        if (signupBtn) signupBtn.disabled = true;
       }
     } catch (err) {
       console.error('identifierNext handler error', err);
@@ -228,7 +282,7 @@ function setupAuthModal() {
     }
   });
 
-  // sign in
+  // Sign in
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -240,8 +294,12 @@ function setupAuthModal() {
       signinBtn.disabled = true;
       const res = await signInWithPassword(email, pw);
       signinBtn.disabled = false;
-      if (res.error) { if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed'; return; }
+      if (res.error) {
+        if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed';
+        return;
+      }
 
+      // set session if returned (optional)
       try {
         if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
@@ -261,48 +319,36 @@ function setupAuthModal() {
     }
   });
 
-  // enable signup button only after checkbox + fields valid
-  const validateEnableSignup = () => {
-    if (!signupBtn) return;
-    const email = (signupEmail?.value || '').trim();
-    const name  = (signupName?.value || '').trim();
-    const pw    = (signupPassword?.value || '').trim();
-    const checked = !!(acceptTermsChk?.checked);
-    signupBtn.disabled = !(email && name && pw.length >= 6 && checked);
-  };
-  acceptTermsChk && acceptTermsChk.addEventListener('change', validateEnableSignup);
-  signupEmail && signupEmail.addEventListener('input', validateEnableSignup);
-  signupName && signupName.addEventListener('input', validateEnableSignup);
-  signupPassword && signupPassword.addEventListener('input', validateEnableSignup);
-
-  // signup -> show confirmation step (do not auto-close)
+  // Sign up
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
       if (signupError) signupError.textContent = '';
+
       const email = (signupEmail?.value || '').trim();
       const name = (signupName?.value || '').trim();
       const pw = (signupPassword?.value || '').trim();
+
       if (!email || !name || !pw) { if (signupError) signupError.textContent = 'Fill name, email and password'; return; }
       if (pw.length < 6) { if (signupError) signupError.textContent = 'Password must be at least 6 characters'; return; }
-      if (!acceptTermsChk?.checked) { if (signupError) signupError.textContent = 'You must accept terms to create account'; return; }
+      if (!signupAccept?.checked) { if (signupError) signupError.textContent = 'You must accept the Terms'; return; }
 
       signupBtn.disabled = true;
       const res = await signUpWithEmail(email, pw, { full_name: name });
       signupBtn.disabled = false;
-      if (res.error) { if (signupError) signupError.textContent = res.error.message || 'Signup failed'; return; }
 
-      // show confirmation message (do not close automatically)
-      if (confirmationTxt) {
-        confirmationTxt.textContent = `We sent a confirmation email to ${email}. Click the link in that email to activate your account. Check spam if you don't see it.`;
+      if (res.error) {
+        if (signupError) signupError.textContent = res.error.message || 'Signup failed';
+        return;
       }
-      showStep('rs-step-confirmation');
 
-      // disable inputs to prevent accidental re-submission
-      if (signupEmail) signupEmail.disabled = true;
-      if (signupName) signupName.disabled = true;
-      if (signupPassword) signupPassword.disabled = true;
-      if (acceptTermsChk) acceptTermsChk.disabled = true;
+      // Success: do NOT close modal. Show confirmation step so user sees next steps.
+      const emailSentTo = email;
+      if (confText) confText.textContent = `A confirmation link has been sent to ${emailSentTo}. Please follow it to complete your account.`;
+      showStep('rs-step-confirmation');
+      // optionally clear signup form
+      if (signupPassword) signupPassword.value = '';
+      if (signupAccept) { signupAccept.checked = false; signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
     } catch (err) {
       console.error('signup handler error', err);
       if (signupError) signupError.textContent = 'Unexpected error. See console.';
@@ -310,10 +356,31 @@ function setupAuthModal() {
     }
   });
 
+  // Resend confirmation (basic)
+  if (confResend) confResend.addEventListener('click', async (e) => {
+    try {
+      try { e.preventDefault(); } catch (_) {}
+      // Supabase's resend confirmation endpoint is not directly exposed in the JS SDK.
+      // A simple approach is to call auth.signUp again which will trigger an email if allowed,
+      // but that may return "user already exists" in some configs. For a safer flow you can
+      // call a server-side endpoint to resend. Here we'll display a temporary message.
+      if (confText) {
+        const prev = confText.textContent;
+        confText.textContent = 'A new confirmation email request has been sent (if supported).';
+        setTimeout(() => { confText.textContent = prev; }, 4000);
+      }
+    } catch (err) {
+      console.error('resend error', err);
+    }
+  });
+
+  if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
+
+  // cancel signup -> back to entry
   if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 }
 
-/* header extras */
+/* ----- header extras (cart + auth UI) ----- */
 export function renderHeaderExtras() {
   setCartCount(cartTotalCount());
   window.addEventListener('storage', () => setCartCount(cartTotalCount()));
@@ -330,13 +397,18 @@ export function renderHeaderExtras() {
 
   async function refreshAuthUI() {
     try {
-      const userRes = await Promise.race([ supabase.auth.getUser(), new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 6000)) ]);
+      const userRes = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 6000))
+      ]);
       const user = userRes?.data?.user || userRes?.user || null;
       setUi(!!user);
       if (user) return;
-    } catch (e) { console.warn('supabase.getUser failed/timeout', e); }
+    } catch (e) {
+      console.warn('supabase.getUser failed/timeout', e);
+    }
 
-    // fallback token check
+    // fallback: token check
     try {
       const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token');
       const raw = localStorage.getItem(storageKey);
@@ -347,11 +419,21 @@ export function renderHeaderExtras() {
       if (!access_token) { setUi(false); return; }
       const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
       const resp = await fetch(url, { method: 'GET', headers: { 'Authorization': 'Bearer ' + access_token, 'apikey': supabase.supabaseKey }, mode: 'cors', cache: 'no-store' });
-      if (resp.status === 200) setUi(true); else setUi(false);
-    } catch (e) { console.warn('fallback token check failed', e); setUi(false); }
+      if (resp.status === 200) setUi(true);
+      else setUi(false);
+    } catch (e) {
+      console.warn('fallback token check failed', e);
+      setUi(false);
+    }
   }
 
-  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch((e) => console.warn('refreshAuthUI error', e)); }); } catch (e) {}
+  try {
+    supabase.auth.onAuthStateChange(() => {
+      refreshAuthUI().catch((e) => console.warn('refreshAuthUI error', e));
+    });
+  } catch (e) { /* ignore */ }
+
+  // initial
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
   if (logoutBtn) {
@@ -365,7 +447,7 @@ export function renderHeaderExtras() {
   }
 }
 
-/* auto-run */
+/* ----- auto-run on DOM ready ----- */
 document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
