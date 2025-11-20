@@ -365,3 +365,6 @@ export function renderHeaderExtras() {
 }
 
 try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
+
+window.openModal = openModal;
+window.closeModal = closeModal;
