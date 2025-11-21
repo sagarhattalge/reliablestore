@@ -138,3 +138,46 @@ title: Home — Reliable Store
 
   document.addEventListener('DOMContentLoaded', renderProducts);
 </script>
+
+<!-- Forgot Password Modal (Supabase email-link) -->
+<div id="forgotModal" class="modal hidden" aria-hidden="true">
+  <div class="modal-backdrop" onclick="closeForgotModal()"></div>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="fp-title">
+    <h3 id="fp-title">Reset your password</h3>
+
+    <form id="forgotForm" class="form">
+      <label for="fp-identifier">Mobile number or email</label>
+      <input id="fp-identifier" name="identifier" type="text" placeholder="you@example.com or +91 9XXXXXXXXX" required />
+
+      <p class="small">By continuing, you agree to our Conditions of Use and Privacy Notice.</p>
+
+      <div class="actions">
+        <button type="submit" id="forgotSubmit">Continue</button>
+        <button type="button" id="forgotCancel" onclick="closeForgotModal()">Cancel</button>
+      </div>
+    </form>
+
+    <div id="forgotResult" class="hidden">
+      <p id="forgotMessage"></p>
+      <div class="actions">
+        <button id="forgotClose" onclick="closeForgotModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Minimal modal styles; adapt to your site CSS */
+.modal.hidden { display:none; }
+.modal { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; }
+.modal-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,0.5); }
+.modal-panel{ position:relative; z-index:1001; background:#fff; padding:20px; border-radius:8px; max-width:420px; width:100%; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+.form label{ display:block; margin-bottom:6px; font-weight:600; }
+.form input{ width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:6px; }
+.actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
+button{ padding:8px 12px; border-radius:6px; border:none; cursor:pointer; }
+button#forgotSubmit{ background:#ff9900; color:#000; font-weight:600; }
+button#forgotClose, button#forgotCancel{ background:#eee; }
+.small{ font-size:12px; color:#666; margin-top:6px; }
+</style>
+
