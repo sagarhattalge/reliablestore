@@ -60,7 +60,7 @@ By continuing to access or use our Service after revisions become effective, you
 
 ## Contact Us
 
-If you have any questions about these Terms, please [**contact us**]({{ '/contact/' | relative_url }}).
+If you have any questions about these Terms, please [**contact us**](/contact.html ).
 
 <!-- Styling below is placed *after* the markdown so kramdown renders headings/paragraphs correctly -->
 <style>
