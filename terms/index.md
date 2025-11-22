@@ -110,6 +110,8 @@ body {
 
 <div class="terms-container"></div>
 
+<div class="terms-container"></div>
+
 
 <!-- wrap content in a container DIV *after* Markdown -->
 <div class="terms-container containerized-terms"></div>
