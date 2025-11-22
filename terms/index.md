@@ -109,4 +109,3 @@ body {
 </style>
 
 <!-- wrap content in a container DIV *after* Markdown -->
-<div class="terms-container containerized-terms"></div>
