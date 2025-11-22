@@ -64,7 +64,12 @@ If you have any questions about these Terms, please contact us.
 
 <!-- Styling below is placed *after* the markdown so kramdown renders headings/paragraphs correctly -->
 <style>
-/* clean card-like center column */
+body {
+  background-color: #f6f8f9;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
 .terms-container {
   max-width: 820px;
   margin: 48px auto;
@@ -78,22 +83,33 @@ If you have any questions about these Terms, please contact us.
   font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* ensure page layout uses container when present */
-.terms-container > * { margin-top: 0; }
-.terms-container h1 { font-size: 30px; margin-bottom: 8px; }
-.terms-container h2 { font-size: 20px; margin-top: 26px; margin-bottom: 6px; }
-
-/* put our content inside the container without breaking markdown processing */
-.containerized-terms { padding: 0; }
-@media (max-width: 900px) {
-  .terms-container { margin: 24px 16px; padding: 22px; font-size:16px; }
+.terms-container h1 {
+  font-size: 30px;
+  margin-bottom: 8px;
 }
 
-/* small subtle page background (keeps footer contrast) */
-body {
-  background-color: #f6f8f9;
+.terms-container h2 {
+  font-size: 20px;
+  margin-top: 26px;
+  margin-bottom: 6px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .terms-container {
+    margin: 24px 0;
+    padding: 22px;
+    font-size: 16px;
+  }
 }
 </style>
+
+<div class="terms-container"></div>
+
 
 <!-- wrap content in a container DIV *after* Markdown -->
 <div class="terms-container containerized-terms"></div>
