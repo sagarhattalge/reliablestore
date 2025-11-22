@@ -66,8 +66,8 @@ If you have any questions about these Terms, please contact us.
 <style>
 body {
   background-color: #f6f8f9;
-  padding-left: 20px;
-  padding-right: 20px;
+  padding-left: 40px;
+  padding-right: 40px;
 }
 
 .terms-container {
