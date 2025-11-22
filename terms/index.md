@@ -1,16 +1,14 @@
 ---
 layout: default
-title: "Terms & Conditions"
+title: "Terms and Conditions"
 permalink: /terms/
 ---
 
 <div class="page-container">
 
-# Terms & Conditions
+# Terms and Conditions
 
-Terms and Conditions
-
-Last updated: March 13, 2021
+*Last updated: March 13, 2021*
 
 Please read these Terms of Use (“Terms”, “Terms of Use”) carefully before using the http://oldreliablestore.local website (the “Service”) operated by Reliable Store (“us”, “we”, or “our”).
 
@@ -18,7 +16,7 @@ Your access to and use of the Service is conditioned on your acceptance of and c
 
 By accessing or using the Service you agree to be bound by these Terms. If you disagree with any part of the terms then you may not access the Service.
 
-Accounts
+## Accounts
 
 When you create an account with us, you must provide us information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.
 
@@ -26,11 +24,11 @@ You are responsible for safeguarding the password that you use to access the Ser
 
 You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.
 
-Intellectual Property
+## Intellectual Property
 
 The Service and its original content, features and functionality are and will remain the exclusive property of Reliable Store and its licensors.
 
-Links To Other Web Sites
+## Links To Other Web Sites
 
 Our Service may contain links to third-party web sites or services that are not owned or controlled by Reliable Store.
 
@@ -38,7 +36,7 @@ Reliable Store has no control over, and assumes no responsibility for, the conte
 
 We strongly advise you to read the terms and conditions and privacy policies of any third-party web sites or services that you visit.
 
-Termination
+## Termination
 
 We may terminate or suspend access to our Service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.
 
@@ -50,23 +48,23 @@ Upon termination, your right to use the Service will immediately cease. If you w
 
 All provisions of the Terms which by their nature should survive termination shall survive termination, including, without limitation, ownership provisions, warranty disclaimers, indemnity and limitations of liability.
 
-Disclaimer
+## Disclaimer
 
 Your use of the Service is at your sole risk. The Service is provided on an “AS IS” and “AS AVAILABLE” basis. The Service is provided without warranties of any kind, whether express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, non-infringement or course of performance.
 
-Governing Law
+## Governing Law
 
 These Terms shall be governed and construed in accordance with the laws of India without regard to its conflict of law provisions.
 
 Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights. If any provision of these Terms is held to be invalid or unenforceable by a court, the remaining provisions of these Terms will remain in effect. These Terms constitute the entire agreement between us regarding our Service, and supersede and replace any prior agreements we might have between us regarding the Service.
 
-Changes
+## Changes
 
 We reserve the right, at our sole discretion, to modify or replace these Terms at any time. If a revision is material we will try to provide at least 30 days notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion.
 
 By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, please stop using the Service.
 
-Contact Us
+## Contact Us
 
 If you have any questions about these Terms, please contact us.
 
@@ -75,19 +73,27 @@ If you have any questions about these Terms, please contact us.
 <style>
 .page-container {
     max-width: 900px;
-    margin: 40px auto;
+    margin: 36px auto;
     padding: 0 20px;
-    line-height: 1.7;
+    line-height: 1.65;
     font-size: 16px;
+    color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
-
-.page-container h1,
-.page-container h2,
-.page-container h3 {
-    margin-top: 32px;
+.page-container h1 {
+    font-size: 28px;
+    margin-bottom: 6px;
 }
-
+.page-container h2 {
+    font-size: 18px;
+    margin-top: 24px;
+    margin-bottom: 8px;
+}
 .page-container p {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
+}
+.page-container em, .page-container .muted {
+    color: #666;
+    font-size: 14px;
 }
 </style>
