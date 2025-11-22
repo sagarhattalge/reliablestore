@@ -66,12 +66,12 @@ If you have any questions about these Terms, please contact us.
 <style>
 body {
   background-color: #f6f8f9;
-  padding-left: 40px;
-  padding-right: 40px;
+  padding-left: 20px;
+  padding-right: 20px;
 }
 
 .terms-container {
-  max-width: 820px;
+  max-width: 300px;
   margin: 48px auto;
   padding: 34px;
   background: #ffffff;
