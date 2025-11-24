@@ -149,42 +149,147 @@ body{
 /* Accessibility focus */
 a:focus, button:focus, input:focus {outline:2px solid var(--brand);outline-offset:2px}
 
-/* Make cart a consistent, centered pill and ensure icon color follows text color */
+/* ---------- Header / Topbar ---------- */
+
+/* Basic topbar container */
+.site-topbar {
+  background: #0f1720; /* dark header background */
+  color: #fff;
+  position: relative;
+  z-index: 50;
+  font-family: inherit;
+}
+
+/* inner wrapper uses flex to align brand, nav and actions */
+.wrap.topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 0 !important; /* remove white line */
+  box-shadow: none !important;
+}
+
+/* Logo */
+.site-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* Hide any big textual site-title if present elsewhere */
+.site-title,
+.brand strong,
+.brand .site-name,
+.header-logo .site-title {
+  display: none !important;
+}
+
+/* NAV */
+.main-nav .nav-list {
+  display: flex;
+  gap: 22px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+
+/* nav links */
+.main-nav a {
+  color: rgba(255,255,255,0.92);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+
+/* subtle hover on nav links */
+.main-nav a:hover,
+.main-nav a:focus {
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+}
+
+/* Header actions (login & cart) */
 .header-actions {
   display: flex;
   gap: 10px;
-  align-items: center; /* vertical center items */
+  align-items: center;
 }
 
-/* Cart button/pill */
-.header-actions .cart,
-.header-actions .cart a,
-.header-actions .cart-link {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 48px;          /* keep square-ish pill */
-  height: 34px;             /* consistent height */
-  padding: 0 10px !important;
-  border-radius: 8px !important;
-  background: #ffffff !important; /* white pill to contrast dark header */
-  color: #111 !important;         /* dark icon/text on white pill */
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
-  border: 0 !important;
+/* Login pill */
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #f6c25a; /* accent color similar to buttons on page */
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
 }
 
-/* If your cart icon is an SVG, make sure it uses currentColor */
-.header-actions .cart svg,
-.header-actions .cart img {
+/* Cart pill (consistent square-ish pill) */
+.cart-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 46px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: #ffffff;        /* white pill contrasted against dark header */
+  color: #111 !important;
+  text-decoration: none;
+  font-weight: 700;
+  box-shadow: none;
+  border: 0;
+}
+
+/* If you prefer dark pill instead, change these two lines:
+.cart-btn { background: #111; color: #fff; }
+*/
+
+/* cart icon sizing */
+.cart-btn .cart-icon,
+.cart-btn img {
   width: 20px;
   height: 20px;
+  line-height: 20px;
   display: inline-block;
-  vertical-align: middle;
-  fill: currentColor !important;
 }
 
-/* If the cart had weird margin or transform from theme, remove it */
-.header-actions .cart {
-  margin: 0 !important;
-  transform: none !important;
+/* cart count */
+.cart-count {
+  margin-left: 4px;
+  font-size: 13px;
+  color: inherit;
 }
+
+/* Remove any stray border under header from other rules */
+.wrap.topbar-inner,
+.site-topbar,
+header.site-topbar {
+  border-bottom: 0 !important;
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* Responsive: collapse nav into simple layout on small screens */
+@media (max-width: 880px) {
+  .main-nav { display: none; } /* if you have a mobile menu, replace this */
+  .wrap.topbar-inner { padding: 10px; }
+  .site-logo { height: 36px; }
+}
+
+/* ---------- End header styles ---------- */
+
