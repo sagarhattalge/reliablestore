@@ -1,15 +1,12 @@
-<!-- _includes/header.html (updated) -->
-<header class="site-topbar" role="banner" aria-label="Site header">
-  <div class="wrap topbar-inner">
-    <!-- BRAND: logo only -->
-    <a class="brand" href="/" aria-label="ReliableStore home">
-      <img src="/assets/icons/header-logo.png" alt="Reliable Store" class="site-logo" />
-      <!-- big text removed; kept visually-hidden label for screen-readers -->
-      <span class="visually-hidden">Reliable Store</span>
+<!-- _includes/header.html -->
+<header class="site-topbar" role="banner">
+  <div class="wrap topbar-inner" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid #eee">
+    <a class="brand" href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit" aria-label="ReliableStore home">
+      <img src="/assets/icons/header-logo.png" alt="ReliableStore" class="logo" style="height:36px;display:block"/>
+      <strong>ReliableStore</strong>
     </a>
 
-    <!-- MAIN NAV -->
-    <nav class="site-nav" aria-label="Main navigation">
+    <nav class="site-nav" aria-label="Main navigation" style="display:flex;gap:12px;align-items:center">
       <a href="/">Home</a>
       <a href="/all-products.html">All Products</a>
       <a href="/category.html">Grocery &amp; Gourmet Foods</a>
@@ -18,11 +15,12 @@
     </nav>
 
     <!-- header actions: login/logout/cart -->
-    <div id="rs-header-actions" class="header-actions" role="group" aria-label="Header actions">
+    <div id="rs-header-actions" class="header-actions" style="display:flex;gap:8px;align-items:center">
       <!-- Login toggle (opens modal) -->
       <button id="rs-header-login-toggle"
               data-rs-login
               class="btn-link login-link"
+              style="background:transparent;border:1px solid #ddd;padding:7px 10px;border-radius:8px;cursor:pointer"
               aria-haspopup="dialog"
               aria-controls="rs-auth-modal">
         Login / Sign Up
@@ -30,80 +28,83 @@
 
       <!-- Logout (hidden until JS shows it) -->
       <button id="rs-logout-btn"
-              class="btn-link logout-btn"
-              style="display:none;"
+              class="btn-link"
+              style="display:none;padding:7px 10px;border-radius:8px;background:#FE9900;color:#fff;border:0;cursor:pointer"
               aria-hidden="true">
         Logout
       </button>
 
       <!-- Cart -->
-      <a href="/cart.html" class="cart-btn" aria-label="View cart">
-        <span class="cart-icon" aria-hidden="true">🛒</span>
-        <span id="cart-count" class="cart-count">0</span>
+      <a href="/cart.html" class="cart" style="padding:7px 10px;border-radius:8px;background:#fff;border:1px solid #ddd;text-decoration:none">
+        Cart <span id="cart-count">0</span>
       </a>
     </div>
   </div>
 
-  <!-- Auth Modal (present so every page has it) -->
+  <!-- Auth Modal (present in HTML so every page has it) -->
   <div id="rs-auth-modal"
-       class="rs-modal hidden"
-       aria-hidden="true"
-       role="dialog"
-       aria-labelledby="rs-auth-title">
-    <div class="rs-modal-backdrop" data-rs-close></div>
+     class="rs-modal hidden"
+     aria-hidden="true"
+     role="dialog"
+     aria-labelledby="rs-auth-title"
+     style="position:fixed;inset:0;z-index:1200;align-items:center;justify-content:center">
+    <div class="rs-modal-backdrop" data-rs-close style="position:absolute;inset:0;background:rgba(0,0,0,0.45)"></div>
 
-    <div class="rs-modal-panel" role="document" aria-modal="true">
-      <button class="rs-modal-close" data-rs-close aria-label="Close">×</button>
+    <div class="rs-modal-panel" role="document" aria-modal="true" style="position:relative;background:#fff;border-radius:10px;padding:18px;max-width:420px;width:94%;box-shadow:0 20px 50px rgba(0,0,0,0.2)">
+
+      <button class="rs-modal-close" data-rs-close aria-label="Close" style="position:absolute;right:8px;top:6px;border:none;background:transparent;font-size:20px;cursor:pointer">×</button>
 
       <!-- Step A: ask for email or phone -->
       <div id="rs-step-enter" class="rs-step">
-        <h3 id="rs-auth-title">Sign in or create account</h3>
-        <p>Enter your mobile number or email</p>
-        <input id="rs-identifier" type="text" placeholder="Email or mobile number" aria-label="Email or mobile" />
-        <div class="rs-step-actions">
-          <button id="rs-identifier-next" class="rs-btn rs-btn-primary">Continue</button>
-          <button class="rs-btn ghost" data-rs-close>Cancel</button>
+        <h3 id="rs-auth-title" style="margin:0 0 6px 0">Sign in or create account</h3>
+        <p style="margin:0 0 10px;color:#666">Enter your mobile number or email</p>
+        <input id="rs-identifier" type="text" placeholder="Email or mobile number" aria-label="Email or mobile" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef"/>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="rs-identifier-next" class="rs-btn" style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Continue</button>
+          <button class="rs-btn ghost" data-rs-close style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Cancel</button>
         </div>
-        <div id="rs-identifier-error" class="rs-error"></div>
+        <div id="rs-identifier-error" class="rs-error" style="color:#b00020;margin-top:8px"></div>
       </div>
 
       <!-- Step B: existing user -> ask password -->
-      <div id="rs-step-password" class="rs-step hidden" aria-hidden="true">
-        <h3>Sign in</h3>
-        <div id="rs-known-email" class="rs-known-email"></div>
-        <input id="rs-password" type="password" placeholder="Password" aria-label="Password" />
-        <div class="rs-step-actions">
-          <button id="rs-signin-btn" class="rs-btn rs-btn-primary">Sign in</button>
-          <button id="rs-go-signup" class="rs-btn ghost">Create account</button>
+      <div id="rs-step-password" class="rs-step hidden" style="display:none">
+        <h3 style="margin:0 0 6px 0">Sign in</h3>
+        <div id="rs-known-email" style="color:#666;margin-bottom:8px"></div>
+        <input id="rs-password" type="password" placeholder="Password" aria-label="Password" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef"/>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="rs-signin-btn" class="rs-btn" style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Sign in</button>
+          <button id="rs-go-signup" class="rs-btn ghost" style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Create account</button>
         </div>
-        <div id="rs-password-error" class="rs-error"></div>
-        <div class="rs-step-back"><button id="rs-back-to-enter" class="rs-btn-link">Back</button></div>
+        <div id="rs-password-error" class="rs-error" style="color:#b00020;margin-top:8px"></div>
+        <div style="margin-top:8px"><button id="rs-back-to-enter" style="background:transparent;border:none;color:#666;cursor:pointer">Back</button></div>
       </div>
 
       <!-- Step C: new user -> signup form -->
-      <div id="rs-step-signup" class="rs-step hidden" aria-hidden="true">
-        <h3>Create account</h3>
-        <input id="rs-signup-email" type="email" placeholder="Email" aria-label="Email" />
-        <input id="rs-signup-name" type="text" placeholder="Full name" aria-label="Full name" />
-        <input id="rs-signup-password" type="password" placeholder="Password (min 6 chars)" aria-label="Password" />
-        <div class="rs-accept">
-          <input id="rs-signup-accept" type="checkbox" />
-          <label for="rs-signup-accept">I agree to receive emails and accept the Terms</label>
+      <div id="rs-step-signup" class="rs-step hidden" style="display:none">
+        <h3 style="margin:0 0 6px 0">Create account</h3>
+        <input id="rs-signup-email" type="email" placeholder="Email" aria-label="Email" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef;margin-bottom:6px"/>
+        <input id="rs-signup-name" type="text" placeholder="Full name" aria-label="Full name" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef;margin-bottom:6px"/>
+        <input id="rs-signup-password" type="password" placeholder="Password (min 6 chars)" aria-label="Password" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6e9ef"/>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input id="rs-signup-accept" type="checkbox" style="width:16px;height:16px" />
+            <label for="rs-signup-accept" style="font-size:13px;color:#444">I agree to receive emails and accept the Terms</label>
+          </div>
         </div>
-        <div class="rs-step-actions">
-          <button id="rs-signup-btn" class="rs-btn rs-btn-primary" disabled>Create account</button>
-          <button id="rs-cancel-signup" class="rs-btn ghost">Cancel</button>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button id="rs-signup-btn" class="rs-btn" disabled style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer;opacity:0.7">Create account</button>
+          <button id="rs-cancel-signup" class="rs-btn ghost" style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Cancel</button>
         </div>
-        <div id="rs-signup-error" class="rs-error"></div>
+        <div id="rs-signup-error" class="rs-error" style="color:#b00020;margin-top:8px"></div>
       </div>
 
       <!-- Step D: confirmation/next steps after signup -->
-      <div id="rs-step-confirmation" class="rs-step hidden" aria-hidden="true">
-        <h3>Check your email</h3>
-        <p id="rs-confirmation-text">A confirmation link has been sent to your email. Please follow it to complete your account.</p>
-        <div class="rs-step-actions">
-          <button id="rs-confirmation-close" class="rs-btn rs-btn-primary">Close</button>
-          <button id="rs-confirmation-resend" class="rs-btn ghost">Resend email</button>
+      <div id="rs-step-confirmation" class="rs-step hidden" style="display:none">
+        <h3 style="margin:0 0 6px 0">Check your email</h3>
+        <p id="rs-confirmation-text" style="margin:0 0 10px;color:#444">A confirmation link has been sent to your email. Please follow it to complete your account.</p>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="rs-confirmation-close" class="rs-btn" style="background:#FE9900;color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer">Close</button>
+          <button id="rs-confirmation-resend" class="rs-btn ghost" style="background:#fff;border:1px solid #ddd;padding:10px;border-radius:8px;cursor:pointer">Resend email</button>
         </div>
       </div>
 
