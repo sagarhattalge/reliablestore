@@ -55,17 +55,69 @@
   <script type="module" src="/assets/js/supabase_client.js"></script>
   <script type="module" src="/assets/js/site_header.js"></script>
 
-  <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker
-        .register("/service-worker.js")
-        .then(function (registration) {
-          console.log("ServiceWorker registration successful with scope: ", registration.scope);
-        })
-        .catch(function (error) {
-          console.log("ServiceWorker registration failed:", error);
+<!-- PWA service worker register + update handler -->
+<script>
+  // Insert or ensure your service-worker register uses this code (one-time)
+  if ('serviceWorker' in navigator) {
+    (async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/service-worker.js');
+        console.log('Service worker registered with scope:', reg.scope);
+
+        // If there's already a waiting worker (e.g., updated while page closed), show update UI
+        if (reg.waiting) {
+          showUpdateUI(reg);
+        }
+
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          newSW.addEventListener('statechange', () => {
+            // When the new SW is installed and there's an existing controller, it means update is ready
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateUI(reg);
+            }
+          });
         });
+
+        // Optional: listen for controllingchange to auto-reload when new SW becomes active
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Controller changed — reloading to activate new service worker');
+          window.location.reload();
+        });
+      } catch (err) {
+        console.error('Service worker registration failed:', err);
+      }
+    })();
+  }
+
+  // ---------- UI + action ----------
+  function showUpdateUI(registration) {
+    // Create a small fixed banner if not already present
+    if (document.getElementById('pwa-update-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'pwa-update-banner';
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;
+                  background:#111;color:#fff;position:fixed;left:12px;right:12px;bottom:20px;
+                  box-shadow:0 6px 18px rgba(0,0,0,0.2);z-index:999999;font-family:Arial, sans-serif;">
+        <div style="flex:1;font-size:15px;">A new version is available.</div>
+        <button id="pwa-update-apply" style="background:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Update</button>
+        <button id="pwa-update-later" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:#fff;padding:8px 12px;border-radius:6px;cursor:pointer;margin-left:8px;">Later</button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+
+    document.getElementById('pwa-update-apply').addEventListener('click', async () => {
+      // Tell waiting SW to skipWaiting
+      if (!registration || !registration.waiting) return;
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // After we ask SW to skipWaiting, 'controllerchange' event will fire and we auto reload
+    });
+
+    document.getElementById('pwa-update-later').addEventListener('click', () => {
+      const b = document.getElementById('pwa-update-banner');
+      if (b) b.remove();
     });
   }
 </script>
