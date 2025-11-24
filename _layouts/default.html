@@ -2,56 +2,43 @@
 <!doctype html>
 <html lang="en">
 <head>
-
-<script>
-  // Update these values whenever you release a new version
-  window.APP_VERSION = "v1.0.1";
-  window.APP_CHANGELOG = `
-    • Faster product page load
-    • Improved checkout flow
-    • Bug fixes and polish
-  `;
-</script>
-  
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const el = document.querySelector("#app-version-footer strong");
-    if (el) el.textContent = window.APP_VERSION;
-  });
-</script>
-  
-  <script>
-  window.APP_VERSION = "1.0.0";   
-  window.APP_CHANGELOG = `
-    • Faster loading  
-    • Improved performance  
-    • Minor bug fixes  
-  `;
-</script>
-
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{{ page.title | default: site.title }}</title>
+
+  <!-- icons / favicons -->
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
+
+  <!-- main stylesheet -->
   <link rel="stylesheet" href="/assets/css/styles.css" />
-  <meta name="theme-color" content="#FE9900" />
+
+  <!-- PWA: single theme color (keep consistent) -->
+  <meta name="theme-color" content="#1f2933" />
 
   <!-- PWA: Manifest -->
-<link rel="manifest" href="/manifest.webmanifest">
+  <link rel="manifest" href="/manifest.webmanifest">
 
-<!-- PWA: Theme color -->
-<meta name="theme-color" content="#1f2933">
+  <!-- Android app-like -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Reliable Store India">
 
-<!-- Android app-like experience -->
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Reliable Store India">
+  <!-- iOS (optional) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Reliable Store India">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
-<!-- iOS (optional but good) -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Reliable Store India">
-<link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <!-- PWA app version + changelog (single source of truth) -->
+  <script>
+    // Update these values whenever you release a new version
+    window.APP_VERSION = "v1.0.1";
+    window.APP_CHANGELOG = `
+      • Faster product page load
+      • Improved checkout flow
+      • Bug fixes and polish
+    `;
+  </script>
 
 </head>
 <body>
@@ -62,6 +49,11 @@
   </main>
 
   {% include footer.html %}
+
+  <!-- Version badge in footer (visible) -->
+  <div id="app-version-footer" style="font-size:12px; text-align:center; opacity:0.7; margin:18px 0 28px;">
+    Reliable Store India — App Version: <strong></strong>
+  </div>
 
   <!-- lightweight page behaviour -->
   <script>
@@ -82,96 +74,92 @@
   <script type="module" src="/assets/js/supabase_client.js"></script>
   <script type="module" src="/assets/js/site_header.js"></script>
 
-<!-- PWA update handler — polished UI -->
-<script>
-if ('serviceWorker' in navigator) {
-  (async () => {
-    try {
-      const reg = await navigator.serviceWorker.register('/service-worker.js');
-      console.log('Service worker registered with scope:', reg.scope);
+  <!-- PWA service worker register + polished update handler -->
+  <script>
+  if ('serviceWorker' in navigator) {
+    (async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/service-worker.js');
+        console.log('Service worker registered with scope:', reg.scope);
 
-      if (reg.waiting) showUpdateUI(reg);
+        // If there's already a waiting worker (e.g., updated while page closed), show update UI
+        if (reg.waiting) showUpdateUI(reg);
 
-      reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing;
-        newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            showUpdateUI(reg);
-          }
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateUI(reg);
+            }
+          });
         });
-      });
 
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        // new SW activated — reload to use new content
-        window.location.reload();
-      });
-    } catch (err) {
-      console.error('Service worker registration failed:', err);
-    }
-  })();
-}
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          // new SW activated — reload to use new content
+          window.location.reload();
+        });
+      } catch (err) {
+        console.error('Service worker registration failed:', err);
+      }
+    })();
+  }
 
-function showUpdateUI(registration) {
-  if (document.getElementById('pwa-update-sheet')) return;
+  function showUpdateUI(registration) {
+    if (document.getElementById('pwa-update-sheet')) return;
 
-  // Container
-  const sheet = document.createElement('div');
-  sheet.id = 'pwa-update-sheet';
-  sheet.innerHTML = `
-    <div class="pwa-sheet-panel">
-      <div class="pwa-sheet-head">
-        <div class="pwa-sheet-title">New version available — <span id="pwa-ver"></span></div>
-        <button id="pwa-close-x" aria-label="Close">&times;</button>
+    // Container
+    const sheet = document.createElement('div');
+    sheet.id = 'pwa-update-sheet';
+    sheet.innerHTML = `
+      <div class="pwa-sheet-panel">
+        <div class="pwa-sheet-head">
+          <div class="pwa-sheet-title">New version available — <span id="pwa-ver"></span></div>
+          <button id="pwa-close-x" aria-label="Close">&times;</button>
+        </div>
+        <div class="pwa-sheet-body">
+          <div class="pwa-sheet-changelog" id="pwa-changelog"></div>
+        </div>
+        <div class="pwa-sheet-actions">
+          <button id="pwa-update-apply" class="pwa-btn-primary">Update</button>
+          <button id="pwa-update-later" class="pwa-btn-ghost">Later</button>
+        </div>
       </div>
-      <div class="pwa-sheet-body">
-        <div class="pwa-sheet-changelog" id="pwa-changelog"></div>
-      </div>
-      <div class="pwa-sheet-actions">
-        <button id="pwa-update-apply" class="pwa-btn-primary">Update</button>
-        <button id="pwa-update-later" class="pwa-btn-ghost">Later</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(sheet);
+    `;
+    document.body.appendChild(sheet);
 
-  // Fill version & changelog
-  const verEl = document.getElementById('pwa-ver');
-  const chEl = document.getElementById('pwa-changelog');
-  if (verEl) verEl.textContent = window.APP_VERSION || 'new';
-  if (chEl) chEl.innerHTML = (window.APP_CHANGELOG || '').replace(/\n/g, '<br>');
+    // Fill version & changelog
+    const verEl = document.getElementById('pwa-ver');
+    const chEl = document.getElementById('pwa-changelog');
+    if (verEl) verEl.textContent = window.APP_VERSION || 'new';
+    if (chEl) chEl.innerHTML = (window.APP_CHANGELOG || '').replace(/\n/g, '<br>');
 
-  // Actions
-  document.getElementById('pwa-update-apply').addEventListener('click', () => {
-    if (!registration || !registration.waiting) return;
-    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    // controllerchange will reload page
-  });
+    // Actions
+    document.getElementById('pwa-update-apply').addEventListener('click', () => {
+      if (!registration || !registration.waiting) return;
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      // controllerchange will reload page
+    });
 
-  const removeSheet = () => {
-    const el = document.getElementById('pwa-update-sheet');
-    if (el) el.remove();
-  };
+    const removeSheet = () => {
+      const el = document.getElementById('pwa-update-sheet');
+      if (el) el.remove();
+    };
 
-  document.getElementById('pwa-update-later').addEventListener('click', removeSheet);
-  document.getElementById('pwa-close-x').addEventListener('click', removeSheet);
+    document.getElementById('pwa-update-later').addEventListener('click', removeSheet);
+    document.getElementById('pwa-close-x').addEventListener('click', removeSheet);
 
-  // Optional: show the sheet after a short delay for smoother UX
-  sheet.classList.add('pwa-sheet-show');
-}
-</script>
+    // Show the sheet with transition
+    sheet.classList.add('pwa-sheet-show');
+  }
+  </script>
 
-  <!-- service-worker registration + update listener -->
-<script>
-  ... (your full update script here) ...
-</script>
+  <!-- Fill footer version (runs after footer element exists) -->
+  <script>
+    (function(){
+      const el = document.querySelector("#app-version-footer strong");
+      if (el) el.textContent = window.APP_VERSION || '';
+    })();
+  </script>
 
-<footer>
-  <!-- other footer content -->
-
-  <div id="app-version-footer" style="font-size:12px; text-align:center; opacity:0.7; margin-top:20px;">
-    Reliable Store India — App Version: <strong></strong>
-  </div>
-</footer>
-  
 </body>
 </html>
