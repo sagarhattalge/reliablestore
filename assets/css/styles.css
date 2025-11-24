@@ -367,6 +367,9 @@ header.site-topbar {
   cursor:pointer;
 }
 
+/* focus visible for accessibility */
+#pwa-update-sheet button:focus { outline: 3px solid rgba(31,41,51,0.12); outline-offset: 2px; }
+
 /* responsive tweaks */
 @media (min-width:900px) {
   #pwa-update-sheet { right: 24px; left: auto; max-width:420px; bottom:24px; }
