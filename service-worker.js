@@ -1,42 +1,37 @@
-// Simple service worker for Reliable Store India
-
+// service-worker.js — Reliable Store India
 const CACHE_NAME = "reliable-store-v1";
+const ASSETS_TO_CACHE = [ "/" ];
 
-// For now, just cache the homepage.
-// Later you can add more URLs here if you want.
-const ASSETS_TO_CACHE = [
-  "/"
-];
-
+// Install: cache minimal assets
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.warn("Caching failed", err);
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE)).catch(() => {})
   );
 });
 
+// Activate: remove old caches and take control immediately
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+      // take control of uncontrolled clients right away
+      if (self.clients && clients.claim) await clients.claim();
+    })()
   );
 });
 
+// Fetch: cache-first then network
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request);
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
+});
+
+// Listen for a command from the page to skip waiting and activate new SW immediately
+self.addEventListener("message", (event) => {
+  if (!event.data) return;
+  if (event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
