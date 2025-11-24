@@ -255,9 +255,8 @@ a:focus, button:focus, input:focus {outline:2px solid var(--brand);outline-offse
   border: 0;
 }
 
-/* If you prefer dark pill instead, change these two lines:
+/* If you prefer dark pill instead, change these two lines:*/
 .cart-btn { background: #111; color: #fff; }
-*/
 
 /* cart icon sizing */
 .cart-btn .cart-icon,
