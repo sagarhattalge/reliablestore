@@ -1,5 +1,5 @@
 // service-worker.js — Reliable Store India
-const CACHE_NAME = "reliable-store-v1";
+const CACHE_NAME = "reliable-store-v1.0.1";
 const ASSETS_TO_CACHE = [ "/" ];
 
 // Install: cache minimal assets
