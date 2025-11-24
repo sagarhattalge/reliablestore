@@ -148,3 +148,43 @@ body{
 
 /* Accessibility focus */
 a:focus, button:focus, input:focus {outline:2px solid var(--brand);outline-offset:2px}
+
+/* Make cart a consistent, centered pill and ensure icon color follows text color */
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center; /* vertical center items */
+}
+
+/* Cart button/pill */
+.header-actions .cart,
+.header-actions .cart a,
+.header-actions .cart-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 48px;          /* keep square-ish pill */
+  height: 34px;             /* consistent height */
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  background: #ffffff !important; /* white pill to contrast dark header */
+  color: #111 !important;         /* dark icon/text on white pill */
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+  border: 0 !important;
+}
+
+/* If your cart icon is an SVG, make sure it uses currentColor */
+.header-actions .cart svg,
+.header-actions .cart img {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+  vertical-align: middle;
+  fill: currentColor !important;
+}
+
+/* If the cart had weird margin or transform from theme, remove it */
+.header-actions .cart {
+  margin: 0 !important;
+  transform: none !important;
+}
