@@ -293,11 +293,84 @@ header.site-topbar {
 /* ---------- End header styles ---------- */
 
 <style>
-  /* If you want to override look, paste in your global CSS */
-  #pwa-update-banner { font-weight:500; }
-  #pwa-update-banner button:hover { opacity:0.95; transform:translateY(-1px); transition:all .12s ease; }
-  @media (min-width:800px) {
-    #pwa-update-banner { left: auto; right: 24px; bottom: 24px; max-width:420px; }
-  }
-</style>
+/* PWA update sheet styles — paste into global CSS */
+#pwa-update-sheet {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 18px;
+  z-index: 999999;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  transition: transform .28s cubic-bezier(.2,.9,.3,1), opacity .2s;
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+}
+#pwa-update-sheet.pwa-sheet-show { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
+.pwa-sheet-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(8,12,20,0.18);
+  overflow: hidden;
+  border: 1px solid rgba(31,41,51,0.06);
+}
+
+/* header */
+.pwa-sheet-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  background: linear-gradient(90deg, #1f2933, #293343);
+  color: #fff;
+}
+.pwa-sheet-title { font-size:14px; font-weight:600; letter-spacing:0.1px; }
+#pwa-close-x {
+  background:transparent;
+  color: rgba(255,255,255,0.9);
+  font-size:20px;
+  border:0;
+  cursor:pointer;
+  padding:4px 6px;
+  line-height:1;
+}
+
+/* body */
+.pwa-sheet-body { padding:12px 14px; background: #fafafa; }
+.pwa-sheet-changelog { font-size:13px; color: #222; line-height:1.35; white-space:pre-wrap; }
+
+/* actions */
+.pwa-sheet-actions {
+  display:flex;
+  gap:10px;
+  padding:12px;
+  justify-content:flex-end;
+  background: #fff;
+}
+.pwa-btn-primary {
+  background: #1f2933;
+  color: #fff;
+  border: none;
+  padding:10px 14px;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+  box-shadow: 0 6px 14px rgba(31,41,51,0.12);
+}
+.pwa-btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(31,41,51,0.08);
+  color: #1f2933;
+  padding:10px 12px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+/* responsive tweaks */
+@media (min-width:900px) {
+  #pwa-update-sheet { right: 24px; left: auto; max-width:420px; bottom:24px; }
+  .pwa-sheet-body { padding:14px; }
+  .pwa-sheet-actions { padding:14px; }
+}
+</style>
