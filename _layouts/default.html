@@ -2,14 +2,17 @@
 <!doctype html>
 <html lang="en">
 <head>
-<footer>
-  <!-- other footer content -->
 
-  <div id="app-version-footer" style="font-size:12px; text-align:center; opacity:0.7; margin-top:20px;">
-    Reliable Store India — App Version: <strong></strong>
-  </div>
-</footer>
-
+<script>
+  // Update these values whenever you release a new version
+  window.APP_VERSION = "v1.0.1";
+  window.APP_CHANGELOG = `
+    • Faster product page load
+    • Improved checkout flow
+    • Bug fixes and polish
+  `;
+</script>
+  
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const el = document.querySelector("#app-version-footer strong");
@@ -150,6 +153,14 @@
 <script>
   ... (your full update script here) ...
 </script>
+
+<footer>
+  <!-- other footer content -->
+
+  <div id="app-version-footer" style="font-size:12px; text-align:center; opacity:0.7; margin-top:20px;">
+    Reliable Store India — App Version: <strong></strong>
+  </div>
+</footer>
   
 </body>
 </html>
