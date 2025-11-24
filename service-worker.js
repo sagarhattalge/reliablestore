@@ -1,5 +1,5 @@
 // service-worker.js — Reliable Store India
-const CACHE_NAME = "reliable-store-v1.0.1";
+const CACHE_NAME = "reliable-store-v1.0.2";
 
 // Add more URLs here to cache important assets for offline use
 const ASSETS_TO_CACHE = [
