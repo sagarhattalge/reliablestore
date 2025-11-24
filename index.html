@@ -82,30 +82,31 @@ title: Home — Reliable Store
      ADD TO CART
   ------------------------- */
   function addToCart(id) {
-    const p = products.find(x => x.id === id);
-    if (!p) return;
+  const p = products.find(x => x.id === id);
+  if (!p) return;
 
-    const cart = getCart();
-    const key = 'p' + id;
+  const cart = getCart();
+  const key = 'p' + id;
 
-    if (!cart[key]) {
-      cart[key] = {
-        id: p.id,
-        title: p.name,
-        price: p.price,
-        qty: 0
-      };
-    }
-
-    cart[key].qty = (cart[key].qty || 0) + 1;
-    setCart(cart);
-
-    // Update header badge immediately
-    const badge = document.getElementById('cart-count') || document.getElementById('cart_count');
-    if (badge) {
-      badge.textContent = Object.values(cart).reduce((s, i) => s + (i.qty || 0), 0);
-    }
+  if (!cart[key]) {
+    cart[key] = {
+      id: p.id,
+      title: p.name,
+      price: p.price,
+      qty: 0,
+      image: p.img         // <-- include the product image URL
+    };
   }
+
+  cart[key].qty = (cart[key].qty || 0) + 1;
+  setCart(cart);
+
+  // Update header badge immediately
+  const badge = document.getElementById('cart-count') || document.getElementById('cart_count');
+  if (badge) {
+    badge.textContent = Object.values(cart).reduce((s, i) => s + (i.qty || 0), 0);
+  }
+}
 
   /* -------------------------
      SIMPLE SEARCH
