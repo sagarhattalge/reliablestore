@@ -292,3 +292,12 @@ header.site-topbar {
 
 /* ---------- End header styles ---------- */
 
+<style>
+  /* If you want to override look, paste in your global CSS */
+  #pwa-update-banner { font-weight:500; }
+  #pwa-update-banner button:hover { opacity:0.95; transform:translateY(-1px); transition:all .12s ease; }
+  @media (min-width:800px) {
+    #pwa-update-banner { left: auto; right: 24px; bottom: 24px; max-width:420px; }
+  }
+</style>
+
