@@ -247,8 +247,8 @@ a:focus, button:focus, input:focus {outline:2px solid var(--brand);outline-offse
   height: 36px;
   padding: 0 10px;
   border-radius: 8px;
-  background: #ffffff;        /* white pill contrasted against dark header */
-  color: #111 !important;
+  /* background: #ffffff;        /* white pill contrasted against dark header */ */
+  /* color: #111 !important; */
   text-decoration: none;
   font-weight: 700;
   box-shadow: none;
