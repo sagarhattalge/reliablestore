@@ -4,7 +4,7 @@ title: Contact — Reliable Store
 ---
 
 <!-- ===== HERO SECTION ===== -->
-<section class="hero-full" style="background:#fff;padding:30px 0;">
+<section class="hero-full" style="background:#fff;padding:20px 0;">
   <div class="hero-inner" style="max-width:1180px;margin:0 auto;text-align:center;">
     <h1>Contact Us</h1>
     <p>We're here to help! Reach out anytime.</p>
@@ -14,14 +14,13 @@ title: Contact — Reliable Store
 <!-- ===== CONTACT PAGE BODY ===== -->
 <section class="full-bleed">
   <div class="full-bleed-inner" 
-       style="padding:20px; max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:18px;">
+       style="padding:20px; max-width:980px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:18px;">
 
     <!-- INTRO TEXT -->
     <div style="display:flex;flex-direction:column;gap:12px;">
       <h2 style="margin:0 0 6px;">Send us a message</h2>
       <p style="margin:0;color:#444;">
-        We're here to help with orders, returns, shipping or product queries. 
-        We reply within <strong>24–48 hours</strong> on working days.
+        If you have questions about your order, delivery, refunds or general support, just send us a message below.
       </p>
     </div>
 
@@ -31,7 +30,8 @@ title: Contact — Reliable Store
       "https://script.google.com/macros/s/AKfycbyg1Yr04J9FVEfTcEJDIpLYe39HpsV84IGLRlRnzFCgZg8zbSZ4W9f-g1WshOBHvPtyoA/exec";
     </script>
 
-    <div style="display:grid;grid-template-columns:1fr;gap:14px;">
+    <!-- FORM WRAPPER (adds lower-right note) -->
+    <div class="form-wrapper" style="position:relative;">
 
       <form id="contactForm" method="post" action="" target="hidden_iframe" 
             novalidate style="display:flex;flex-direction:column;gap:12px;">
@@ -72,28 +72,22 @@ title: Contact — Reliable Store
         <div id="form-status" style="margin-top:6px;color:green;display:none;">Thanks! Your message was sent.</div>
         <div id="form-error" style="margin-top:6px;color:#b00020;display:none;"></div>
 
-        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;">
-          <button id="sendBtn" type="submit" 
-                  style="background:#ff8c00;color:#fff;padding:10px 16px;border:0;border-radius:6px;cursor:pointer">
-            Send Message
-          </button>
-          <small style="color:#666;">Reply within 24–48 hours</small>
-        </div>
+        <button id="sendBtn" type="submit" 
+                style="background:#ff8c00;color:#fff;padding:10px 16px;border:0;border-radius:6px;cursor:pointer;align-self:flex-start;">
+          Send Message
+        </button>
       </form>
+
+      <!-- Single unobtrusive note (Amazon-style) -->
+      <div class="form-note">Reply within 24–48 hours</div>
 
       <!-- Hidden iframe -->
       <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
-
-      <!-- floating IP -->
-      <div id="floating-ip" aria-hidden="true" 
-           style="position: fixed;bottom: 6px;right: 6px;background: transparent;
-                  color: rgba(0,0,0,0.45);padding: 4px 6px;font-size: 11px;
-                  border-radius: 6px;z-index:2147483647;pointer-events:none;opacity:0.55;
-                  transition:opacity 180ms ease;"></div>
     </div>
+
     <!-- ===== END FORM ===== -->
 
-    <!-- ===== OTHER WAYS TO REACH ===== -->
+    <!-- ===== OTHER WAYS TO REACH US ===== -->
     <div style="background:#fff;padding:14px;border-radius:8px;border:1px solid #eee;">
       <h3 style="margin:0 0 8px;font-size:18px;">Other ways to reach us</h3>
       <p style="margin:0 0 8px;color:#444;">
@@ -112,7 +106,7 @@ title: Contact — Reliable Store
   </div>
 </section>
 
-<!-- ===== JSON-LD STRUCTURED DATA (HIDDEN ADDRESS) ===== -->
+<!-- ===== JSON-LD STRUCTURED DATA (HIDDEN FULL ADDRESS) ===== -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -132,7 +126,7 @@ title: Contact — Reliable Store
 }
 </script>
 
-<!-- ===== FORM SCRIPT (unchanged core logic) ===== -->
+<!-- ===== FORM LOGIC (UNCHANGED) ===== -->
 <script>
 (function(){
   const form = document.getElementById('contactForm');
@@ -163,7 +157,6 @@ title: Contact — Reliable Store
         const ip = j.ip || j.ip_address || j.query || j.address;
         if (ip) {
           clientIpEl.value = ip;
-          floatingIp.textContent = ip;
           return;
         }
       } catch(e){}
@@ -185,7 +178,7 @@ title: Contact — Reliable Store
     setTimeout(()=>{ statusEl.style.display='none'; }, 4500);
   };
 
-  function validEmail(x){ return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(x); }
+  function validEmail(x){ return /^[^\s@]+@^\s@]+\.[^\\s@]{2,}$/.test(x); }
   function validPhone(p){ return /^[0-9]{10}$/.test(p); }
 
   form.addEventListener('submit', async function(ev){
@@ -195,16 +188,16 @@ title: Contact — Reliable Store
 
     if (hpEl.value) return;
 
-    const name = name.value.trim();
-    const email = email.value.trim();
-    const phone = phone.value.trim();
-    const message = message.value.trim();
+    const nameVal = name.value.trim();
+    const emailVal = email.value.trim();
+    const phoneVal = phone.value.trim();
+    const msgVal = message.value.trim();
 
     const errors = [];
-    if (name.length < 2) errors.push("Please enter your name.");
-    if (!validEmail(email)) errors.push("Invalid email.");
-    if (!validPhone(phone)) errors.push("Phone must be 10 digits.");
-    if (message.length < 3) errors.push("Message too short.");
+    if (nameVal.length < 2) errors.push("Please enter your name.");
+    if (!validEmail(emailVal)) errors.push("Invalid email.");
+    if (!validPhone(phoneVal)) errors.push("Phone must be 10 digits.");
+    if (msgVal.length < 3) errors.push("Message too short.");
 
     if (errors.length){
       errEl.innerText = errors.join(" ");
