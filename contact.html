@@ -26,8 +26,8 @@ title: Contact — Reliable Store
 
     <!-- ===== START: Contact Form ===== -->
     <script>
-      const WEB_APP_URL = 
-      "https://script.google.com/macros/s/AKfycbyg1Yr04J9FVEfTcEJDIpLYe39HpsV84IGLRlRnzFCgZg8zbSZ4W9f-g1WshOBHvPtyoA/exec";
+      // Your Google Apps Script Web App URL (preserved)
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyg1Yr04J9FVEfTcEJDIpLYe39HpsV84IGLRlRnzFCgZg8zbSZ4W9f-g1WshOBHvPtyoA/exec";
     </script>
 
     <!-- FORM WRAPPER (adds lower-right note) -->
@@ -78,11 +78,17 @@ title: Contact — Reliable Store
         </button>
       </form>
 
-      <!-- Single unobtrusive note (Amazon-style) -->
-      <div class="form-note">Reply within 24–48 hours</div>
+      <!-- Single unobtrusive note (lower-right inside form wrapper) -->
+      <div class="form-note" style="position:absolute; right:12px; bottom:8px; font-size:12px; color:#6b6b6b; pointer-events:none;">
+        Reply within 24–48 hours
+      </div>
 
-      <!-- Hidden iframe -->
+      <!-- Hidden iframe and floating IP -->
       <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
+      <div id="floating-ip" aria-hidden="true" 
+           style="position: fixed;bottom: 6px;right: 6px;background: transparent;color: rgba(0,0,0,0.45);
+                  padding: 4px 6px;font-size: 11px;border-radius: 6px;z-index:2147483647;pointer-events:none;opacity:0.55;
+                  transition:opacity 180ms ease;"></div>
     </div>
 
     <!-- ===== END FORM ===== -->
@@ -126,7 +132,7 @@ title: Contact — Reliable Store
 }
 </script>
 
-<!-- ===== FORM LOGIC (UNCHANGED) ===== -->
+<!-- ===== FORM LOGIC (FIXED & WORKING) ===== -->
 <script>
 (function(){
   const form = document.getElementById('contactForm');
@@ -138,8 +144,15 @@ title: Contact — Reliable Store
   const hpEl = document.getElementById('hp');
   const floatingIp = document.getElementById('floating-ip');
 
+  // Element references to inputs
+  const nameEl = document.getElementById('name');
+  const emailEl = document.getElementById('email');
+  const phoneEl = document.getElementById('phone');
+  const messageEl = document.getElementById('message');
+
   if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
 
+  // attempt to fetch client IP (non-blocking)
   async function fetchIpOnce(timeout = 1400) {
     const sources = [
       'https://api.ipify.org?format=json',
@@ -154,9 +167,10 @@ title: Contact — Reliable Store
         clearTimeout(to);
         if (!res.ok) continue;
         const j = await res.json();
-        const ip = j.ip || j.ip_address || j.query || j.address;
+        const ip = j && (j.ip || j.ip_address || j.query || j.address);
         if (ip) {
-          clientIpEl.value = ip;
+          if (clientIpEl) clientIpEl.value = ip;
+          if (floatingIp) floatingIp.textContent = ip;
           return;
         }
       } catch(e){}
@@ -164,58 +178,108 @@ title: Contact — Reliable Store
   }
   fetchIpOnce();
 
-  sendBtn.disabled = true;
-  sendBtn.style.opacity = 0.6;
-  setTimeout(()=>{ sendBtn.disabled = false; sendBtn.style.opacity = 1; }, 2000);
+  // initial button state
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = 0.6;
+    setTimeout(()=>{ sendBtn.disabled = false; sendBtn.style.opacity = 1; }, 2000);
+  }
 
+  // iframe onload handler for success feedback
   let submitted = false;
   window.onIFrameLoad = function(){
     if (!submitted) return;
-    statusEl.style.display = 'block';
-    errEl.style.display = 'none';
-    form.reset();
+    try { if (statusEl) statusEl.style.display = 'block'; } catch(e){}
+    try { if (errEl) errEl.style.display = 'none'; } catch(e){}
+    try { if (form) form.reset(); } catch(e){}
     submitted = false;
-    setTimeout(()=>{ statusEl.style.display='none'; }, 4500);
+    setTimeout(()=>{ try{ if (statusEl) statusEl.style.display='none'; }catch(e){} }, 4500);
   };
 
-  function validEmail(x){ return /^[^\s@]+@^\s@]+\.[^\\s@]{2,}$/.test(x); }
-  function validPhone(p){ return /^[0-9]{10}$/.test(p); }
+  // validators
+  function validEmail(x){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(x||'').trim().toLowerCase());
+  }
+  function validPhone(p){
+    return /^[0-9]{10}$/.test(String((p||'').replace(/\D/g,'')));
+  }
 
-  form.addEventListener('submit', async function(ev){
-    ev.preventDefault();
-    statusEl.style.display='none';
-    errEl.style.display='none';
+  // submit handler
+  if (form) {
+    form.addEventListener('submit', async function(ev){
+      ev.preventDefault();
 
-    if (hpEl.value) return;
+      // hide previous messages
+      if (statusEl) statusEl.style.display='none';
+      if (errEl) { errEl.style.display='none'; errEl.innerText=''; }
 
-    const nameVal = name.value.trim();
-    const emailVal = email.value.trim();
-    const phoneVal = phone.value.trim();
-    const msgVal = message.value.trim();
+      // honeypot check
+      if (hpEl && hpEl.value) return;
 
-    const errors = [];
-    if (nameVal.length < 2) errors.push("Please enter your name.");
-    if (!validEmail(emailVal)) errors.push("Invalid email.");
-    if (!validPhone(phoneVal)) errors.push("Phone must be 10 digits.");
-    if (msgVal.length < 3) errors.push("Message too short.");
+      // read values from inputs
+      const nameVal = (nameEl && nameEl.value || '').trim();
+      const emailVal = (emailEl && emailEl.value || '').trim();
+      const phoneVal = (phoneEl && phoneEl.value || '').trim();
+      const msgVal = (messageEl && messageEl.value || '').trim();
 
-    if (errors.length){
-      errEl.innerText = errors.join(" ");
-      errEl.style.display='block';
-      return;
-    }
+      const errors = [];
+      if (nameVal.length < 2) errors.push("Please enter your name (2+ characters).");
+      if (!validEmail(emailVal)) errors.push("Please enter a valid email address.");
+      if (!validPhone(phoneVal)) errors.push("Please enter a valid 10-digit phone number.");
+      if (msgVal.length < 3) errors.push("Please enter a short message.");
 
-    form.action = WEB_APP_URL;
-    submitted = true;
-    sendBtn.disabled = true;
-    sendBtn.style.opacity = 0.6;
-    form.submit();
-    setTimeout(()=>{ sendBtn.disabled = false; sendBtn.style.opacity = 1; }, 6000);
-  });
+      if (errors.length){
+        if (errEl) {
+          errEl.innerText = errors.join(' ');
+          errEl.style.display = 'block';
+        } else {
+          alert(errors.join('\n'));
+        }
+        return;
+      }
 
+      // ensure WEB_APP_URL is set
+      if (typeof WEB_APP_URL === 'undefined' || !WEB_APP_URL || WEB_APP_URL.indexOf('/exec') === -1) {
+        if (errEl) {
+          errEl.innerText = 'Server URL missing or invalid. Please contact admin.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      // quick attempt to fetch IP if still empty
+      if (clientIpEl && !clientIpEl.value) {
+        try {
+          const r = await fetch('https://api.ipify.org?format=json', {cache:'no-store', method:'GET'});
+          if (r.ok) {
+            const j = await r.json();
+            if (j && j.ip) clientIpEl.value = j.ip;
+          }
+        } catch(e){}
+      }
+
+      // submit to Web App via hidden iframe
+      try {
+        form.action = WEB_APP_URL;
+        submitted = true;
+        if (sendBtn) { sendBtn.disabled = true; sendBtn.style.opacity = 0.6; }
+        form.submit();
+        setTimeout(()=>{ if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = 1; } }, 6000);
+      } catch(e) {
+        if (errEl) {
+          errEl.innerText = 'Failed to send message. Please try again later.';
+          errEl.style.display = 'block';
+        } else {
+          alert('Failed to send message. Please try again later.');
+        }
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.style.opacity = 1; }
+      }
+    });
+  }
 })();
 </script>
 
+<!-- minimal responsive tweak for floating-ip -->
 <style>
 @media (max-width:420px) {
   #floating-ip {
