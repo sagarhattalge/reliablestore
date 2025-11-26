@@ -377,3 +377,33 @@ header.site-topbar {
   .pwa-sheet-actions { padding:14px; }
 }
 </style>
+
+/* ---- Contact page & header alignment tweaks ---- */
+.hero-full { padding: 18px 0; }
+.hero-inner, .full-bleed-inner, .site-header .container, .site-footer .container {
+  max-width: 1180px; margin:0 auto; padding:0 16px;
+}
+.hero-inner h1 { margin:6px 0; font-size:34px; }
+.hero-inner p { margin:6px 0 0; color:#666; }
+
+.full-bleed { padding: 18px 0; background: #f6f8fa; }
+.full-bleed-inner { max-width: 980px; margin:0 auto; padding:20px; }
+
+/* Form note */
+.form-wrapper { position:relative; }
+.form-note {
+  position:absolute; right:12px; bottom:8px;
+  font-size:12px; color:#6b6b6b; pointer-events:none;
+}
+@media (max-width:600px) {
+  .form-note { position:static; margin-top:6px; text-align:right; }
+}
+
+/* Cart icon color */
+.site-header .cart-icon, .site-header .cart-icon svg {
+  color: #ff8c00;  /* change to your login text colour if different */
+  fill: currentColor;
+}
+
+/* small tweaks */
+.full-bleed-inner h2 { margin-top:0; }
