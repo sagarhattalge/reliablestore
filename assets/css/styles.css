@@ -407,3 +407,23 @@ header.site-topbar {
 
 /* small tweaks */
 .full-bleed-inner h2 { margin-top:0; }
+
+/* Compact version for policy pages */
+.hero-compact {
+  min-height: auto !important;   /* Remove the fixed 260px height */
+  padding: 20px 0 !important;    /* Small clean spacing */
+}
+
+/* Make the inner area compact */
+.hero-inner-compact {
+  padding: 20px 18px !important; /* Previously 56px → now 20px */
+}
+
+/* Optional: reduce gap between heading and paragraph */
+.hero-inner-compact h1 {
+  margin: 0 0 6px 0;              /* small gap */
+}
+
+.hero-inner-compact p {
+  margin: 0;
+}
