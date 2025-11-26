@@ -11,44 +11,49 @@ title: Contact — Reliable Store
 </section>
 
 <section class="full-bleed">
-  <div class="full-bleed-inner" style="padding:20px; max-width:900px;margin:0 auto;">
-    <h2>Send us a message</h2>
+  <div class="full-bleed-inner" style="padding:20px; max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:18px;">
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <h2 style="margin:0 0 6px;">Send us a message</h2>
+      <p style="margin:0;color:#444;">
+        We're here to help with orders, returns, shipping or product queries. We reply within <strong>24–48 hours</strong> on working days.
+      </p>
+    </div>
 
     <!-- ===== START: Contact form (complete) ===== -->
     <script>
-      // Web App URL (filled as you requested)
+      // Web App URL (preserved)
       const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyg1Yr04J9FVEfTcEJDIpLYe39HpsV84IGLRlRnzFCgZg8zbSZ4W9f-g1WshOBHvPtyoA/exec";
     </script>
 
-    <form id="contactForm" method="post" action="" target="hidden_iframe" novalidate>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-
-        <label>
-          Name<br/>
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;">
+      <form id="contactForm" method="post" action="" target="hidden_iframe" novalidate style="display:flex;flex-direction:column;gap:12px;">
+        <label style="font-weight:600;font-size:14px;">
+          Name
           <input id="name" name="name" type="text" required minlength="2"
                  placeholder="Enter your full name"
-                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"/>
+                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;margin-top:6px"/>
         </label>
 
-        <label>
-          Email<br/>
+        <label style="font-weight:600;font-size:14px;">
+          Email
           <input id="email" name="email" type="email" required
                  placeholder="example@gmail.com"
-                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"/>
+                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;margin-top:6px"/>
         </label>
 
-        <label>
-          Phone (10 digits)<br/>
+        <label style="font-weight:600;font-size:14px;">
+          Phone (10 digits)
           <input id="phone" name="phone" type="tel" required pattern="^[0-9]{10}$"
                  placeholder="10-digit mobile number"
                  title="Please enter a 10-digit number (digits only)"
-                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"/>
+                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;margin-top:6px"/>
         </label>
 
-        <label>
-          Message<br/>
+        <label style="font-weight:600;font-size:14px;">
+          Message
           <textarea id="message" name="message" rows="5" required
-                    style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px"></textarea>
+                    style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;margin-top:6px"></textarea>
         </label>
 
         <!-- Hidden fields for server -->
@@ -58,45 +63,184 @@ title: Contact — Reliable Store
         <!-- Honeypot (invisible to humans) -->
         <input type="text" id="hp" name="hp" autocomplete="off" style="display:none" value="">
 
-        <div id="form-status" style="margin-top:12px;color:green;display:none;">Thanks! Your message was sent.</div>
-        <div id="form-error" style="margin-top:12px;color:#b00020;display:none;"></div>
+        <div id="form-status" style="margin-top:6px;color:green;display:none;">Thanks! Your message was sent.</div>
+        <div id="form-error" style="margin-top:6px;color:#b00020;display:none;"></div>
 
-        <button id="sendBtn" type="submit" style="background:#ff8c00;color:#fff;padding:10px 16px;border:0;border-radius:6px;cursor:pointer">
-          Send Message
-        </button>
-      </div>
-    </form>
+        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;">
+          <button id="sendBtn" type="submit" style="background:#ff8c00;color:#fff;padding:10px 16px;border:0;border-radius:6px;cursor:pointer">
+            Send Message
+          </button>
+          <small style="color:#666;">Reply within 24–48 hours on working days</small>
+        </div>
+      </form>
 
-    <!-- Hidden iframe to receive webapp response -->
-    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
+      <!-- Hidden iframe to receive webapp response -->
+      <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="onIFrameLoad()"></iframe>
 
-    <!-- Minimal unobtrusive floating IP (extreme bottom-right, very faint) -->
-    <div id="floating-ip"
-         aria-hidden="true"
-         style="
-           position: fixed;
-           bottom: 6px;
-           right: 6px;
-           background: transparent;
-           color: rgba(0,0,0,0.45);
-           padding: 4px 6px;
-           font-size: 11px;
-           border-radius: 6px;
-           z-index: 2147483647;
-           pointer-events: none;
-           opacity: 0.55;
-           transition: opacity 180ms ease;
-         ">
+      <!-- subtle IP display (keeps existing behavior) -->
+      <div id="floating-ip" aria-hidden="true" style="position: fixed;bottom: 6px;right: 6px;background: transparent;color: rgba(0,0,0,0.45);padding: 4px 6px;font-size: 11px;border-radius: 6px;z-index:2147483647;pointer-events:none;opacity:0.55;transition:opacity 180ms ease;"></div>
     </div>
-
     <!-- ===== END: Contact form ===== -->
 
-    <p style="margin-top:18px;">Or email us at  
-      <a href="mailto:contact@reliablestore.in">contact@reliablestore.in</a> <br>
-        Or Call Us at <a href="tel:+918856085258">+91 88560 85258</a>
-    </p>
+    <!-- Clear, concise contact methods (no repetition) -->
+    <div style="background:#fff;padding:14px;border-radius:8px;border:1px solid #eee;">
+      <h3 style="margin:0 0 8px;font-size:18px;">Other ways to reach us</h3>
+      <p style="margin:0 0 8px;color:#444;">
+        <strong>Phone:</strong>
+        <a href="tel:+918856085258" style="color:#0b6efd;text-decoration:none;">+91 88560 85258</a><br>
+        <strong>Email:</strong>
+        <a href="mailto:contact@reliablestore.in" style="color:#0b6efd;text-decoration:none;">contact@reliablestore.in</a><br>
+        <strong>Address:</strong> Reliable Store, [Street Address], [City], [State] — PIN XXXXX
+      </p>
+      <p style="margin:10px 0 0;color:#666;">Prefer writing? Use the form above and include your order number (if any) so we can help faster.</p>
+    </div>
+
   </div>
 </section>
+
+<!-- (existing script block kept unchanged) -->
+<script>
+(function(){
+  // Elements
+  const form = document.getElementById('contactForm');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusEl = document.getElementById('form-status');
+  const errEl = document.getElementById('form-error');
+  const clientIpEl = document.getElementById('clientIp');
+  const userAgentEl = document.getElementById('userAgent');
+  const hpEl = document.getElementById('hp');
+  const floatingIp = document.getElementById('floating-ip');
+
+  // set UA immediately
+  if (userAgentEl) userAgentEl.value = navigator.userAgent || '';
+
+  // Fetch IP (multiple providers, short timeouts). If found, set hidden field and display faintly.
+  async function fetchIpOnce(timeoutMsPerProvider = 1400) {
+    const services = [
+      'https://api.ipify.org?format=json',
+      'https://ifconfig.co/json',
+      'https://api64.ipify.org?format=json'
+    ];
+    for (const url of services) {
+      try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMsPerProvider);
+        const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(id);
+        if (!res.ok) continue;
+        const j = await res.json();
+        const ip = j && (j.ip || j.ip_address || j.query || j.ipAddress || j.address);
+        if (ip && ip.toString().trim()) {
+          clientIpEl.value = ip.toString().trim();
+          if (floatingIp) {
+            floatingIp.textContent = clientIpEl.value; // show just the IP to keep it subtle
+            floatingIp.style.opacity = '0.55';
+          }
+          return clientIpEl.value;
+        }
+      } catch (e) {
+        // try next provider
+      }
+    }
+    return '';
+  }
+
+  // Start fetching IP immediately (doesn't block form)
+  fetchIpOnce();
+
+  // Briefly disable send to reduce race, but allow send after WAIT_MS
+  sendBtn.disabled = true;
+  sendBtn.style.opacity = 0.6;
+  const WAIT_MS = 2000;
+  setTimeout(() => {
+    sendBtn.disabled = false;
+    sendBtn.style.opacity = 1;
+  }, WAIT_MS);
+
+  // iframe onload: show success and keep subtle IP visible
+  let submitted = false;
+  window.onIFrameLoad = function() {
+    if (!submitted) return;
+    try { if (statusEl) statusEl.style.display = 'block'; } catch(e){}
+    try { if (errEl) errEl.style.display = 'none'; } catch(e){}
+    try { form.reset(); } catch(e){}
+    try { clientIpEl.value = ''; } catch(e){}
+    try { if (userAgentEl) userAgentEl.value = navigator.userAgent || ''; } catch(e){}
+    // keep the tiny IP text visible (no highlight)
+    try { if (floatingIp) floatingIp.style.opacity = '0.35'; } catch(e){}
+    submitted = false;
+    setTimeout(()=>{ try{ if (statusEl) statusEl.style.display='none'; }catch(e){} }, 4500);
+  };
+
+  // client-side validators
+  function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e||'').toLowerCase()); }
+  function validPhone(p){ return /^[0-9]{10}$/.test(String((p||'').replace(/\D/g,''))); }
+
+  // submit handler
+  form.addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    errEl.style.display = 'none';
+    statusEl.style.display = 'none';
+
+    // honeypot check
+    if (hpEl && hpEl.value && hpEl.value.trim() !== '') return;
+
+    const name = (document.getElementById('name')||{}).value || '';
+    const email = (document.getElementById('email')||{}).value || '';
+    const phone = (document.getElementById('phone')||{}).value || '';
+    const message = (document.getElementById('message')||{}).value || '';
+
+    const errors = [];
+    if (name.trim().length < 2) errors.push('Please enter your name (2+ characters).');
+    if (!validEmail(email)) errors.push('Please enter a valid email address.');
+    if (!validPhone(phone)) errors.push('Please enter a valid 10-digit phone number.');
+    if (message.trim().length < 3) errors.push('Please enter a short message.');
+
+    if (errors.length) {
+      errEl.style.display = 'block';
+      errEl.innerText = errors.join(' ');
+      return;
+    }
+
+    // quick attempt to fetch IP if empty
+    if (!clientIpEl.value) {
+      try {
+        const r = await fetch('https://api.ipify.org?format=json', {cache:'no-store', method:'GET'});
+        if (r.ok) {
+          const j = await r.json();
+          if (j && j.ip) {
+            clientIpEl.value = j.ip;
+            if (floatingIp) { floatingIp.textContent = j.ip; floatingIp.style.opacity = '0.55'; }
+          }
+        }
+      } catch(e){}
+    }
+
+    // ensure WEB_APP_URL
+    if (!WEB_APP_URL || WEB_APP_URL.indexOf('/exec') === -1) {
+      errEl.style.display = 'block';
+      errEl.innerText = 'Server URL missing or invalid. Please contact admin.';
+      return;
+    }
+
+    form.action = WEB_APP_URL;
+    submitted = true;
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = 0.6;
+    form.submit();
+
+    setTimeout(()=>{ sendBtn.disabled = false; sendBtn.style.opacity = 1; }, 6000);
+  });
+
+})();
+</script>
+
+<style>
+  /* minimal responsive tweak for tiny screens */
+  @media (max-width:420px) {
+    #floating-ip { font-size:10px !important; bottom:6px !important; right:6px !important; padding:3px 5px !important; }
+  }
+</style>
 
 <script>
 (function(){
