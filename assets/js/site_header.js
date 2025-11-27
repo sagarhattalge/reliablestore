@@ -285,27 +285,27 @@ export function renderHeaderExtras() {
 
   function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
 
-  async function refreshAuthUI() {
+    async function refreshAuthUI() {
+    // Try SDK session / user first (fast path)
     try {
-      // Prefer getSession which is fast; fall back to getUser.
+      // Prefer getSession (faster) then getUser with a timeout guard
       try {
         const sessRes = await Promise.race([
           supabase.auth.getSession(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), 10000))
+          new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), 8000))
         ]);
         const session = sessRes?.data?.session || null;
         const user = session?.user || null;
         setUi(!!user);
         if (user) return;
       } catch (e) {
-        // ignore - will try getUser below
+        // continue to next checks
+        console.warn('getSession fast check failed/timeout', e);
       }
 
-      const userResPromise = supabase.auth.getUser();
-      const timeoutMs = 15000;
       const userRes = await Promise.race([
-        userResPromise,
-        new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), timeoutMs))
+        supabase.auth.getUser(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 12000))
       ]);
       const user = userRes?.data?.user || userRes?.user || null;
       setUi(!!user);
@@ -314,24 +314,39 @@ export function renderHeaderExtras() {
       console.warn('supabase.getUser/getSession failed/timeout', e);
     }
 
-    // fallback token check (defensive)
+    // If we reach here, SDK checks didn't return a user quickly.
+    // Fallback: explicit fetch to Supabase auth endpoint using anon apikey + stored access token.
     try {
-      const storageKey =
-        supabase.storageKey ||
-        ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
-
+      // Compute storage key used by Supabase client
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
       const raw = localStorage.getItem(storageKey);
-      if (!raw) { setUi(false); return; }
       let parsed;
-      try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
-      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token;
-      if (!access_token) { setUi(false); return; }
+      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
+
+      // Prepare apikey (try to read from client config first, fallback to env constant if present)
+      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
+
+      if (!anonKey) {
+        // can't do explicit fetch without an apikey; fallback to unauth UI
+        setUi(false);
+        return;
+      }
+
       const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-      const resp = await fetch(url, { method: 'GET', headers: { 'Authorization': 'Bearer ' + access_token, 'apikey': supabase.supabaseKey }, mode: 'cors', cache: 'no-store' });
-      if (resp.status === 200) setUi(true);
-      else setUi(false);
-    } catch (e) {
-      console.warn('fallback token check failed', e);
+      const headers = { 'apikey': anonKey };
+      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
+
+      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
+      if (resp && resp.status === 200) {
+        setUi(true);
+        return;
+      } else {
+        setUi(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('fallback token check failed', err);
       setUi(false);
     }
   }
