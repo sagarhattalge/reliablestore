@@ -1,39 +1,30 @@
 // assets/js/site_header.js
 // Header + Auth modal client script for ReliableStore
-// Uses the Supabase client exported from /assets/js/supabase_client.js
-
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (deployed) - used to check whether a given identifier exists
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
 const SUPABASE_ANON_KEY = supabase?.supabaseKey || window.SUPABASE_ANON_KEY || '';
 
-// Guard to avoid accidental modal auto-open
 window.__rs_block_auto_modal = true;
 
-/* ----- small helpers ----- */
+/* small helpers */
 const $ = (sel) => document.querySelector(sel);
 const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
-/* ===== Auto-seed Supabase SDK session from stable storage key =====
-   Seeds SDK internal state from localStorage before UI checks run.
-   This prevents race conditions where the SDK's internal session is missing
-   even though tokens exist in localStorage (causes getUser/getSession timeouts).
-*/
+/* seed SDK session from stable storage to avoid getUser/getSession race */
 async function seedSupabaseSessionFromStorage() {
   try {
     if (!window.supabase) return;
-    // Prefer configured storage key, fallback to "-auth-token" style keys if present
     const sdkKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
     const candidateKeys = [sdkKey].concat(Object.keys(localStorage).filter(k => k.includes('-auth-token')));
     let raw = null;
-    let selectedKey = null;
+    let usedKey = null;
     for (const k of candidateKeys) {
       if (!k) continue;
       const v = localStorage.getItem(k);
-      if (v) { raw = v; selectedKey = k; break; }
+      if (v) { raw = v; usedKey = k; break; }
     }
     if (!raw) return;
     let parsed = null;
@@ -43,18 +34,17 @@ async function seedSupabaseSessionFromStorage() {
     if (!access_token) return;
     try {
       await supabase.auth.setSession({ access_token, refresh_token });
-      console.debug('seedSupabaseSessionFromStorage: session seeded into SDK (key=' + selectedKey + ')');
+      console.debug('seedSupabaseSessionFromStorage: seeded from', usedKey);
     } catch (e) {
-      console.warn('seedSupabaseSessionFromStorage: setSession failed', e);
+      console.warn('seedSupabaseSessionFromStorage setSession failed', e);
     }
   } catch (err) {
     console.warn('seedSupabaseSessionFromStorage failed', err);
   }
 }
-// Run early on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => { try { seedSupabaseSessionFromStorage().catch(()=>{}); } catch(e){} });
 
-/* ======= window.RSCart (namespaced cart helpers) ======= */
+/* RSCart namespaced helpers */
 window.RSCart = window.RSCart || (function(){
   const ns = {};
 
@@ -77,8 +67,7 @@ window.RSCart = window.RSCart || (function(){
 
   ns.cartTotalCount = function() {
     const c = ns.readCart();
-    try { return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0); }
-    catch (e) { return 0; }
+    try { return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0); } catch (e) { return 0; }
   };
 
   ns.setCartCountUi = function(n){
@@ -113,11 +102,7 @@ window.RSCart = window.RSCart || (function(){
   ns.loadCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return null;
     try {
-      const { data, error } = await supabase
-        .from('carts')
-        .select('items')
-        .eq('user_id', userId)
-        .maybeSingle(); // safe when row missing
+      const { data, error } = await supabase.from('carts').select('items').eq('user_id', userId).maybeSingle();
       if (error) { console.warn('loadCartForUser supabase error', error); return null; }
       return data?.items || null;
     } catch (err) {
@@ -129,7 +114,7 @@ window.RSCart = window.RSCart || (function(){
   return ns;
 })();
 
-/* modal helpers */
+/* modal & accessibility helpers */
 function _disablePageForModal() {
   const main = document.querySelector('main') || document.body;
   try { main.inert = true; } catch (e) { main.setAttribute('aria-hidden', 'true'); }
@@ -146,10 +131,7 @@ function openModal(opts = {}) {
   m.style.display = 'flex'; m.style.alignItems = 'center'; m.style.justifyContent = 'center';
   m.classList.remove('hidden'); m.removeAttribute('aria-hidden');
   _disablePageForModal();
-  setTimeout(() => {
-    const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
-    if (input) try { input.focus(); } catch (e) {}
-  }, 80);
+  setTimeout(() => { const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])'); if (input) try { input.focus(); } catch (e) {} }, 80);
 }
 function closeModal() {
   const m = $('#rs-auth-modal'); if (!m) return;
@@ -158,24 +140,17 @@ function closeModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
+function showStep(id) { $all('.rs-step').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; }); const el = document.getElementById(id); if (el) { el.classList.remove('hidden'); el.style.display = 'block'; } }
 
-function showStep(id) {
-  $all('.rs-step').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; });
-  const el = document.getElementById(id);
-  if (el) { el.classList.remove('hidden'); el.style.display = 'block'; }
-}
-
-/* Supabase helpers */
+/* Supabase auth helpers */
 async function signInWithPassword(email, password) {
-  try { return await supabase.auth.signInWithPassword({ email, password }); }
-  catch (e) { return { error: e }; }
+  try { return await supabase.auth.signInWithPassword({ email, password }); } catch (e) { return { error: e }; }
 }
 async function signUpWithEmail(email, password, metadata = {}) {
-  try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); }
-  catch (e) { return { error: e }; }
+  try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); } catch (e) { return { error: e }; }
 }
 
-/* Edge function check */
+/* Edge function checkExistingByEmail */
 async function checkExistingByEmail(identifier) {
   try {
     if (!CHECK_IDENTIFIER_ENDPOINT) { console.warn('CHECK_IDENTIFIER_ENDPOINT not configured'); return null; }
@@ -191,7 +166,7 @@ async function checkExistingByEmail(identifier) {
 }
 window.checkExistingByEmail = checkExistingByEmail;
 
-/* modal wiring */
+/* setupAuthModal: wires all modal buttons and flows */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
@@ -200,11 +175,13 @@ function setupAuthModal() {
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext  = document.getElementById('rs-identifier-next');
   const identifierError = document.getElementById('rs-identifier-error');
+
   const knownEmailText  = document.getElementById('rs-known-email');
   const passwordInput   = document.getElementById('rs-password');
   const signinBtn       = document.getElementById('rs-signin-btn');
   const passwordError   = document.getElementById('rs-password-error');
   const backToEnter     = document.getElementById('rs-back-to-enter');
+
   const signupEmail     = document.getElementById('rs-signup-email');
   const signupName      = document.getElementById('rs-signup-name');
   const signupPassword  = document.getElementById('rs-signup-password');
@@ -212,6 +189,7 @@ function setupAuthModal() {
   const signupBtn       = document.getElementById('rs-signup-btn');
   const signupError     = document.getElementById('rs-signup-error');
   const cancelSignup    = document.getElementById('rs-cancel-signup');
+
   const confText        = document.getElementById('rs-confirmation-text');
   const confClose       = document.getElementById('rs-confirmation-close');
   const confResend      = document.getElementById('rs-confirmation-resend');
@@ -219,7 +197,6 @@ function setupAuthModal() {
   const closeBtns = $all('[data-rs-close]').filter(el => !el.classList.contains('rs-modal-backdrop'));
 
   toggle.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; openModal({ force: true }); showStep('rs-step-enter'); if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); } if (identifierError) identifierError.textContent = ''; });
-
   closeBtns.forEach(b => b.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
@@ -269,20 +246,14 @@ function setupAuthModal() {
       signinBtn.disabled = false;
       if (res.error) { if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed'; return; }
 
-      // If the response includes a session, ensure SDK stores it.
+      // Ensure SDK stores session; fallback to writing stable storage if SDK didn't
       try {
         if (!res.error && res.data?.session) {
           const access_token = res.data.session.access_token;
           const refresh_token = res.data.session.refresh_token;
 
-          // 1) Attempt to seed the SDK (normal path)
-          try {
-            await supabase.auth.setSession({ access_token, refresh_token });
-          } catch (e) {
-            console.warn('setSession after sign-in failed (sdk)', e);
-          }
+          try { await supabase.auth.setSession({ access_token, refresh_token }); } catch (e) { console.warn('setSession after sign-in failed (sdk)', e); }
 
-          // 2) Safety fallback: if SDK didn't persist to stable key, write a minimal object
           try {
             const storageKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
             if (!localStorage.getItem(storageKey)) {
@@ -296,9 +267,7 @@ function setupAuthModal() {
               localStorage.setItem(storageKey, JSON.stringify(sessionObj));
               console.debug('Fallback: wrote session to', storageKey);
             }
-          } catch (e) {
-            console.warn('Fallback write to localStorage failed', e);
-          }
+          } catch (e) { console.warn('Fallback write to localStorage failed', e); }
         }
       } catch (e) { console.warn('signin post-session handling failed', e); }
 
@@ -333,12 +302,11 @@ function setupAuthModal() {
   });
 
   if (confResend) confResend.addEventListener('click', async (e) => { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } });
-
   if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
   if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 }
 
-/* header extras (cart + auth UI) */
+/* header extras (cart & auth UI) */
 export function renderHeaderExtras() {
   try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) { console.warn('renderHeaderExtras cart count init failed', e); }
   window.addEventListener('storage', () => { try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {} });
@@ -350,23 +318,17 @@ export function renderHeaderExtras() {
   function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
 
   async function refreshAuthUI() {
-    // Try SDK session / user first (fast path)
+    // Fast SDK checks
     try {
       try {
-        const sessRes = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), 8000))
-        ]);
+        const sessRes = await Promise.race([ supabase.auth.getSession(), new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), 8000)) ]);
         const session = sessRes?.data?.session || null;
         const user = session?.user || null;
         setUi(!!user);
         if (user) return;
       } catch (e) { console.warn('getSession fast check failed/timeout', e); }
 
-      const userRes = await Promise.race([
-        supabase.auth.getUser(),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 12000))
-      ]);
+      const userRes = await Promise.race([ supabase.auth.getUser(), new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 12000)) ]);
       const user = userRes?.data?.user || userRes?.user || null;
       setUi(!!user);
       if (user) return;
@@ -374,15 +336,15 @@ export function renderHeaderExtras() {
       console.warn('supabase.getUser/getSession failed/timeout', e);
     }
 
-    // Fallback: explicit fetch to Supabase auth endpoint using anon apikey + stored access token.
+    // Fallback: explicit fetch to /auth/v1/user with anon apikey + token (quietly treat 401 as unauth)
     try {
-      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      const storageKey = supabase.storageKey || ('rs_supabase_auth_token_v1');
       const raw = localStorage.getItem(storageKey);
       let parsed;
       try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
       const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
 
-      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
+      const anonKey = (typeof window.SUPABASE_ANON_KEY !== 'undefined' && window.SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
 
       if (!anonKey) { setUi(false); return; }
 
@@ -390,10 +352,12 @@ export function renderHeaderExtras() {
       const headers = { 'apikey': anonKey };
       if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
 
+      try { console.debug && console.debug('refreshAuthUI fallback fetch headers:', headers); } catch (e) {}
+
       const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
       if (resp && resp.status === 200) { setUi(true); return; } else { setUi(false); return; }
     } catch (err) {
-      console.warn('fallback token check failed', err);
+      console.warn('fallback token check failed (network/CORS)', err);
       setUi(false);
     }
   }
@@ -406,7 +370,7 @@ export function renderHeaderExtras() {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
       try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
       try {
-        const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+        const storageKey = supabase.storageKey || ('rs_supabase_auth_token_v1');
         localStorage.removeItem(storageKey);
       } catch(e){}
       try { alert('You have been logged out.'); } catch (e) {}
@@ -420,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
 
-// expose testing helpers
+// expose helpers for debugging
 window.openModal = openModal;
 window.closeModal = closeModal;
 
