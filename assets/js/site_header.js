@@ -21,81 +21,84 @@ const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
-/* ----- cart helpers ----- */
-function readCart() {
-  try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
-  catch(e) { return {}; }
-}
-function cartTotalCount() {
-  const c = readCart();
-  return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0);
-}
-function setCartCount(n) {
-  const el1 = document.getElementById('cart-count');
-  const el2 = document.getElementById('cart_count');
-  if (el1) el1.innerText = String(n || 0);
-  if (el2) el2.innerText = String(n || 0);
-}
-
-/* -------------------------
-   CART helpers + server sync
-   (Insert this block into your site_header.js near other helpers)
-------------------------- */
-
-function readCart() {
-  try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
-  catch (e) { console.warn('readCart parse error', e); return {}; }
-}
-function cartTotalCount() {
-  const c = readCart();
-  return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0);
-}
-function setCartCount(n) {
-  const el1 = document.getElementById('cart-count');
-  const el2 = document.getElementById('cart_count');
-  if (el1) el1.innerText = String(n || 0);
-  if (el2) el2.innerText = String(n || 0);
-}
-
-/* Merge strategy: serverCart preferred; quantities are summed */
-function mergeCarts(serverCart, localCart) {
-  const merged = Object.assign({}, serverCart || {});
-  for (const k of Object.keys(localCart || {})) {
-    if (!merged[k]) merged[k] = localCart[k];
-    else merged[k].qty = (merged[k].qty || 0) + (localCart[k].qty || 0);
-  }
-  return merged;
-}
-
-/* Supabase-backed helpers to persist/restore cart for authenticated users.
-   Assumes `supabase` variable is available (it already is in your site_header.js).
+/* ======= Safe cart helpers (namespaced) =======
+   This avoids duplicate global function declarations across pages.
+   It will reuse any existing page-level functions if present
+   (readCart / getCart / getCartLocal and writeCart / setCart / setCartLocal)
+   otherwise it provides reliable fallbacks.
 */
-async function saveCartForUser(userId) {
-  if (!userId) return;
-  const items = readCart();
-  try {
-    // upsert row (create or replace) — requires `carts` table in Supabase
-    await supabase.from('carts').upsert({ user_id: userId, items }).throwOnError();
-  } catch (err) {
-    console.warn('saveCartForUser error', err);
-  }
-}
+window.RSCart = window.RSCart || (function(){
+  const ns = {};
 
-async function loadCartForUser(userId) {
-  if (!userId) return null;
-  try {
-    const { data, error } = await supabase.from('carts').select('items').eq('user_id', userId).single();
-    if (error) {
-      // no row or other error — treat as empty
-      console.warn('loadCartForUser supabase error', error);
+  // use existing page functions if present (backwards compatible)
+  ns.readCart = (typeof window.readCart === 'function') ? window.readCart
+               : (typeof window.getCart === 'function') ? window.getCart
+               : (typeof window.getCartLocal === 'function') ? window.getCartLocal
+               : function() {
+                   try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
+                   catch (e) { console.warn('RSCart.readCart parse error', e); return {}; }
+                 };
+
+  // writeCart / setCart / setCartLocal fallbacks
+  ns.writeCart = (typeof window.writeCart === 'function') ? window.writeCart
+                : (typeof window.setCart === 'function') ? window.setCart
+                : (typeof window.setCartLocal === 'function') ? window.setCartLocal
+                : function(cart) {
+                    try { localStorage.setItem('rs_cart_v1', JSON.stringify(cart)); }
+                    catch (e) { console.warn('RSCart.writeCart error', e); }
+                    try { window.dispatchEvent(new Event('storage')); } catch(e){}
+                  };
+
+  ns.cartTotalCount = function() {
+    const c = ns.readCart();
+    return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0);
+  };
+
+  ns.setCartCountUi = function(n){
+    const el1 = document.getElementById('cart-count');
+    const el2 = document.getElementById('cart_count');
+    if (el1) el1.innerText = String(n || 0);
+    if (el2) el2.innerText = String(n || 0);
+  };
+
+  ns.mergeCarts = function(serverCart, localCart) {
+    const merged = Object.assign({}, serverCart || {});
+    for (const k of Object.keys(localCart || {})) {
+      if (!merged[k]) merged[k] = localCart[k];
+      else merged[k].qty = (merged[k].qty || 0) + (localCart[k].qty || 0);
+    }
+    return merged;
+  };
+
+  // Supabase-backed helpers (require `supabase` variable available)
+  ns.saveCartForUser = async function(userId) {
+    if (!userId || typeof supabase === 'undefined') return;
+    const items = ns.readCart();
+    try {
+      await supabase.from('carts').upsert({ user_id: userId, items }).throwOnError();
+    } catch (err) {
+      console.warn('RSCart.saveCartForUser error', err);
+    }
+  };
+
+  ns.loadCartForUser = async function(userId) {
+    if (!userId || typeof supabase === 'undefined') return null;
+    try {
+      const { data, error } = await supabase.from('carts').select('items').eq('user_id', userId).single();
+      if (error) {
+        // treat missing row as null; log other errors
+        console.warn('RSCart.loadCartForUser supabase error', error);
+        return null;
+      }
+      return data?.items || null;
+    } catch (err) {
+      console.warn('RSCart.loadCartForUser exception', err);
       return null;
     }
-    return data?.items || null;
-  } catch (err) {
-    console.warn('loadCartForUser exception', err);
-    return null;
-  }
-}
+  };
+
+  return ns;
+})();
 
 /* ----- modal accessibility helpers ----- */
 function _disablePageForModal() {
@@ -445,8 +448,16 @@ function setupAuthModal() {
 
 /* ----- header extras (cart + auth UI) ----- */
 export function renderHeaderExtras() {
-  setCartCount(cartTotalCount());
-  window.addEventListener('storage', () => setCartCount(cartTotalCount()));
+  // use namespaced cart helpers
+  try {
+    window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
+  } catch (e) {
+    console.warn('renderHeaderExtras cart count init failed', e);
+  }
+
+  window.addEventListener('storage', () => {
+    try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {}
+  });
 
   try { setupAuthModal(); } catch (e) { console.warn('setupAuthModal error', e); }
 
@@ -502,7 +513,7 @@ export function renderHeaderExtras() {
     logoutBtn.addEventListener('click', async (e) => {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
       try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
-      try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
+      try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
       try { alert('You have been logged out.'); } catch (e) {}
       window.location.href = '/';
     });
@@ -523,7 +534,9 @@ window.closeModal = closeModal;
 (async function attachCartAuthSync() {
   try {
     // keep the header cart badge updated when local cart changes
-    window.addEventListener('storage', () => setCartCount(cartTotalCount()));
+    window.addEventListener('storage', () => {
+      try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){}
+    });
 
     // On auth state change: when a user signs in, merge their server cart into local cart
     try {
@@ -531,16 +544,16 @@ window.closeModal = closeModal;
         const user = session?.user || (await supabase.auth.getUser()).data?.user || null;
         if (user && user.id) {
           try {
-            const server = await loadCartForUser(user.id);
-            const local = readCart();
+            const server = await window.RSCart.loadCartForUser(user.id);
+            const local = window.RSCart.readCart();
             if (server) {
-              const merged = mergeCarts(server, local);
-              try { localStorage.setItem('rs_cart_v1', JSON.stringify(merged)); } catch (e) { console.warn(e); }
+              const merged = window.RSCart.mergeCarts(server, local);
+              try { window.RSCart.writeCart(merged); } catch (e) { console.warn(e); }
               window.dispatchEvent(new Event('storage'));
-              setCartCount(cartTotalCount());
+              window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
             } else if (Object.keys(local).length) {
               // persist local cart to server (first-time save)
-              await saveCartForUser(user.id);
+              await window.RSCart.saveCartForUser(user.id);
             }
           } catch (e) { console.warn('auth-state cart merge failed', e); }
         }
@@ -561,17 +574,17 @@ window.closeModal = closeModal;
 
         if (currentUser && currentUser.id) {
           // persist cart to server for that user
-          try { await saveCartForUser(currentUser.id); } catch (e) { console.warn(e); }
+          try { await window.RSCart.saveCartForUser(currentUser.id); } catch (e) { console.warn(e); }
           // if you want local cart cleared on logout, uncomment next line:
-          // try { localStorage.removeItem('rs_cart_v1'); window.dispatchEvent(new Event('storage')); } catch(e){}
+          // try { window.RSCart.writeCart({}); window.dispatchEvent(new Event('storage')); } catch(e){}
         } else {
           // anonymous: clear the local cart so badge becomes zero after logout
-          try { localStorage.removeItem('rs_cart_v1'); window.dispatchEvent(new Event('storage')); } catch (e) {}
+          try { window.RSCart.writeCart({}); window.dispatchEvent(new Event('storage')); } catch (e) {}
         }
 
         try { await supabase.auth.signOut(); } catch (e) {}
         // update UI badge
-        setCartCount(cartTotalCount());
+        try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){}
         // then navigate away or refresh
         window.location.href = '/';
       });
