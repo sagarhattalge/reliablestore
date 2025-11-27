@@ -1,18 +1,58 @@
 // assets/js/site_header.js
 // Header + Auth modal client script for ReliableStore
-// - Uses Supabase client (imported from /assets/js/supabase_client.js)
+// Uses the Supabase client exported from /assets/js/supabase_client.js
 
 import { supabase } from '/assets/js/supabase_client.js';
 
+// Edge function endpoint (deployed) - used to check whether a given identifier exists
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || window.SUPABASE_ANON_KEY || '';
 
+// Guard to avoid accidental modal auto-open
 window.__rs_block_auto_modal = true;
 
+/* ----- small helpers ----- */
 const $ = (sel) => document.querySelector(sel);
 const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
+
+/* ===== Auto-seed Supabase SDK session from stable storage key =====
+   Seeds SDK internal state from localStorage before UI checks run.
+   This prevents race conditions where the SDK's internal session is missing
+   even though tokens exist in localStorage (causes getUser/getSession timeouts).
+*/
+async function seedSupabaseSessionFromStorage() {
+  try {
+    if (!window.supabase) return;
+    // Prefer configured storage key, fallback to "-auth-token" style keys if present
+    const sdkKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
+    const candidateKeys = [sdkKey].concat(Object.keys(localStorage).filter(k => k.includes('-auth-token')));
+    let raw = null;
+    let selectedKey = null;
+    for (const k of candidateKeys) {
+      if (!k) continue;
+      const v = localStorage.getItem(k);
+      if (v) { raw = v; selectedKey = k; break; }
+    }
+    if (!raw) return;
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+    const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
+    const refresh_token = parsed?.refresh_token || parsed?.currentSession?.refresh_token || null;
+    if (!access_token) return;
+    try {
+      await supabase.auth.setSession({ access_token, refresh_token });
+      console.debug('seedSupabaseSessionFromStorage: session seeded into SDK (key=' + selectedKey + ')');
+    } catch (e) {
+      console.warn('seedSupabaseSessionFromStorage: setSession failed', e);
+    }
+  } catch (err) {
+    console.warn('seedSupabaseSessionFromStorage failed', err);
+  }
+}
+// Run early on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => { try { seedSupabaseSessionFromStorage().catch(()=>{}); } catch(e){} });
 
 /* ======= window.RSCart (namespaced cart helpers) ======= */
 window.RSCart = window.RSCart || (function(){
@@ -229,14 +269,38 @@ function setupAuthModal() {
       signinBtn.disabled = false;
       if (res.error) { if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed'; return; }
 
+      // If the response includes a session, ensure SDK stores it.
       try {
         if (!res.error && res.data?.session) {
-          await supabase.auth.setSession({
-            access_token: res.data.session.access_token,
-            refresh_token: res.data.session.refresh_token
-          });
+          const access_token = res.data.session.access_token;
+          const refresh_token = res.data.session.refresh_token;
+
+          // 1) Attempt to seed the SDK (normal path)
+          try {
+            await supabase.auth.setSession({ access_token, refresh_token });
+          } catch (e) {
+            console.warn('setSession after sign-in failed (sdk)', e);
+          }
+
+          // 2) Safety fallback: if SDK didn't persist to stable key, write a minimal object
+          try {
+            const storageKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
+            if (!localStorage.getItem(storageKey)) {
+              const sessionObj = {
+                access_token,
+                refresh_token,
+                token_type: 'bearer',
+                expires_in: res.data.session.expires_in || null,
+                expires_at: res.data.session.expires_at || null
+              };
+              localStorage.setItem(storageKey, JSON.stringify(sessionObj));
+              console.debug('Fallback: wrote session to', storageKey);
+            }
+          } catch (e) {
+            console.warn('Fallback write to localStorage failed', e);
+          }
         }
-      } catch (e) { console.warn('setSession after sign-in failed', e); }
+      } catch (e) { console.warn('signin post-session handling failed', e); }
 
       closeModal();
       const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
@@ -285,10 +349,9 @@ export function renderHeaderExtras() {
 
   function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
 
-    async function refreshAuthUI() {
+  async function refreshAuthUI() {
     // Try SDK session / user first (fast path)
     try {
-      // Prefer getSession (faster) then getUser with a timeout guard
       try {
         const sessRes = await Promise.race([
           supabase.auth.getSession(),
@@ -298,10 +361,7 @@ export function renderHeaderExtras() {
         const user = session?.user || null;
         setUi(!!user);
         if (user) return;
-      } catch (e) {
-        // continue to next checks
-        console.warn('getSession fast check failed/timeout', e);
-      }
+      } catch (e) { console.warn('getSession fast check failed/timeout', e); }
 
       const userRes = await Promise.race([
         supabase.auth.getUser(),
@@ -314,37 +374,24 @@ export function renderHeaderExtras() {
       console.warn('supabase.getUser/getSession failed/timeout', e);
     }
 
-    // If we reach here, SDK checks didn't return a user quickly.
     // Fallback: explicit fetch to Supabase auth endpoint using anon apikey + stored access token.
     try {
-      // Compute storage key used by Supabase client
       const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
       const raw = localStorage.getItem(storageKey);
       let parsed;
       try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
       const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
 
-      // Prepare apikey (try to read from client config first, fallback to env constant if present)
       const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
 
-      if (!anonKey) {
-        // can't do explicit fetch without an apikey; fallback to unauth UI
-        setUi(false);
-        return;
-      }
+      if (!anonKey) { setUi(false); return; }
 
       const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
       const headers = { 'apikey': anonKey };
       if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
 
       const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
-      if (resp && resp.status === 200) {
-        setUi(true);
-        return;
-      } else {
-        setUi(false);
-        return;
-      }
+      if (resp && resp.status === 200) { setUi(true); return; } else { setUi(false); return; }
     } catch (err) {
       console.warn('fallback token check failed', err);
       setUi(false);
@@ -373,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
 
+// expose testing helpers
 window.openModal = openModal;
 window.closeModal = closeModal;
 
