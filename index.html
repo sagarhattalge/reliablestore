@@ -37,13 +37,27 @@ title: Home — Reliable Store
   /* -------------------------
      CART HELPERS
   ------------------------- */
-  function getCart() {
-    try {
-      return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}');
-    } catch (e) {
-      return {};
-    }
+  /* -------------------------
+   CART HELPERS (centralised)
+------------------------- */
+function getCart() {
+  try {
+    return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}');
+  } catch (e) {
+    console.warn('getCart parse error', e);
+    return {};
   }
+}
+
+function setCart(cart) {
+  try {
+    localStorage.setItem('rs_cart_v1', JSON.stringify(cart));
+  } catch (e) {
+    console.warn('setCart error', e);
+  }
+  // Notify other in-page listeners (header badge, cart page)
+  try { window.dispatchEvent(new Event('storage')); } catch (e) {}
+}
 
   function setCart(cart) {
     localStorage.setItem('rs_cart_v1', JSON.stringify(cart));
