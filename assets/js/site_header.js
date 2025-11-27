@@ -84,11 +84,18 @@ window.RSCart = window.RSCart || (function(){
   ns.loadCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return null;
     try {
-      const { data, error } = await supabase.from('carts').select('items').eq('user_id', userId).single();
+      const { data, error } = await supabase
+  .from('carts')
+  .select('items')
+  .eq('user_id', userId)
+  .maybeSingle();   // IMPORTANT: safe when row missing
+
       if (error) {
-        // treat missing row as null; log other errors
-        console.warn('RSCart.loadCartForUser supabase error', error);
-        return null;
+  console.warn('loadCartForUser supabase error', error);
+  return null;
+}
+return data?.items || null;
+
       }
       return data?.items || null;
     } catch (err) {
