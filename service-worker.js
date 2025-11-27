@@ -12,27 +12,33 @@ const ASSETS_TO_CACHE = [
 ];
 
 // Install: cache assets one-by-one so a single 404 won't abort the whole install.
-self.addEventListener("install", (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    // attempt to add each asset individually and log failures, do not throw
-    for (const url of ASSETS_TO_CACHE) {
-      try {
-        // use fetch so we can inspect response and avoid addAll failing on opaque/404
-        const resp = await fetch(url, { credentials: "same-origin", cache: "no-cache" });
-        if (!resp || !resp.ok) {
-          console.warn(`SW: failed to fetch ${url} (status: ${resp ? resp.status : 'no-response'})`);
-          continue;
-        }
-        // put a clone into cache
-        await cache.put(url, resp.clone());
-      } catch (err) {
-        console.warn(`SW: caching ${url} failed`, err);
-      }
-    }
-    // Ensure active worker takes control quickly (optional)
-    try { await self.skipWaiting(); } catch (e) { /* ignore */ }
-  })());
+self.addEventListener("fetch", (event) => {
+  // Bypass SW for Supabase auth and API calls, and for manifest/icons
+  const reqUrl = event.request.url;
+  if (reqUrl.includes('supabase.co') || reqUrl.includes('/auth/') || reqUrl.endsWith('/manifest.webmanifest') || reqUrl.includes('/icons/') || reqUrl.includes('/assets/icons/')) {
+    // Just go to network (do not try cache)
+    event.respondWith(fetch(event.request).catch(() => caches.match("/")));
+    return;
+  }
+
+  // For non-GET requests just fallback to network
+  if (event.request.method !== "GET") {
+    event.respondWith(fetch(event.request).catch(() => caches.match("/")));
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
+      return fetch(event.request).then((networkResponse) => {
+        // Optionally cache fetched resources (runtime caching) — keep minimal for now
+        return networkResponse;
+      }).catch(() => {
+        // If fetch fails (offline), try to serve navigation/home as fallback
+        return caches.match("/");
+      });
+    })
+  );
 });
 
 // Activate: remove old caches and take control
