@@ -7,8 +7,8 @@ const ASSETS_TO_CACHE = [
   "/assets/css/styles.css",
   "/assets/js/site_header.js",
   "/assets/js/supabase_client.js",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png"
+  "/assets/icons/icon-192.png",
+  "/assets/icons/icon-512.png"
 ];
 
 // Install: cache minimal assets
