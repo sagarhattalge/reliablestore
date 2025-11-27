@@ -532,7 +532,7 @@ export function renderHeaderExtras() {
     logoutBtn.addEventListener('click', async (e) => {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
       try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
-      try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
+      try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
       try { alert('You have been logged out.'); } catch (e) {}
       window.location.href = '/';
     });
