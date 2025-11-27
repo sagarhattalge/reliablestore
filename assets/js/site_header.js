@@ -469,11 +469,14 @@ export function renderHeaderExtras() {
     if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none';
   }
 
-  async function refreshAuthUI() {
+    async function refreshAuthUI() {
     try {
+      // longer timeout and safer handling
+      const userResPromise = supabase.auth.getUser();
+      const timeoutMs = 15000; // 15 seconds
       const userRes = await Promise.race([
-        supabase.auth.getUser(),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 6000))
+        userResPromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), timeoutMs))
       ]);
       const user = userRes?.data?.user || userRes?.user || null;
       setUi(!!user);
@@ -482,7 +485,7 @@ export function renderHeaderExtras() {
       console.warn('supabase.getUser failed/timeout', e);
     }
 
-    // fallback: token check
+    // fallback: token check (unchanged)
     try {
       const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token');
       const raw = localStorage.getItem(storageKey);
