@@ -51,7 +51,11 @@ window.RSCart = window.RSCart || (function(){
 
   ns.cartTotalCount = function() {
     const c = ns.readCart();
-    return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0);
+    try {
+      return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0);
+    } catch (e) {
+      return 0;
+    }
   };
 
   ns.setCartCountUi = function(n){
@@ -75,9 +79,16 @@ window.RSCart = window.RSCart || (function(){
     if (!userId || typeof supabase === 'undefined') return;
     const items = ns.readCart();
     try {
-      await supabase.from('carts').upsert({ user_id: userId, items }).throwOnError();
+      // upsert and return result (safe)
+      const { data, error } = await supabase.from('carts').upsert({ user_id: userId, items }).select();
+      if (error) {
+        console.warn('RSCart.saveCartForUser error', error);
+        return { error };
+      }
+      return { data };
     } catch (err) {
-      console.warn('RSCart.saveCartForUser error', err);
+      console.warn('RSCart.saveCartForUser exception', err);
+      return { error: err };
     }
   };
 
@@ -85,17 +96,15 @@ window.RSCart = window.RSCart || (function(){
     if (!userId || typeof supabase === 'undefined') return null;
     try {
       const { data, error } = await supabase
-  .from('carts')
-  .select('items')
-  .eq('user_id', userId)
-  .maybeSingle();   // IMPORTANT: safe when row missing
+        .from('carts')
+        .select('items')
+        .eq('user_id', userId)
+        .maybeSingle();   // IMPORTANT: safe when row missing
 
       if (error) {
-  console.warn('loadCartForUser supabase error', error);
-  return null;
-}
-return data?.items || null;
-
+        // Log and return null; maybeSingle avoids PGRST116 but still check.
+        console.warn('loadCartForUser supabase error', error);
+        return null;
       }
       return data?.items || null;
     } catch (err) {
@@ -523,7 +532,7 @@ export function renderHeaderExtras() {
     logoutBtn.addEventListener('click', async (e) => {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
       try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
-      try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
+      try { const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/https?:\/\\//, '').split('.')[0] + '-auth-token'); localStorage.removeItem(storageKey); } catch(e){}
       try { alert('You have been logged out.'); } catch (e) {}
       window.location.href = '/';
     });
