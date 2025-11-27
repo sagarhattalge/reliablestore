@@ -37,6 +37,66 @@ function setCartCount(n) {
   if (el2) el2.innerText = String(n || 0);
 }
 
+/* -------------------------
+   CART helpers + server sync
+   (Insert this block into your site_header.js near other helpers)
+------------------------- */
+
+function readCart() {
+  try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
+  catch (e) { console.warn('readCart parse error', e); return {}; }
+}
+function cartTotalCount() {
+  const c = readCart();
+  return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0);
+}
+function setCartCount(n) {
+  const el1 = document.getElementById('cart-count');
+  const el2 = document.getElementById('cart_count');
+  if (el1) el1.innerText = String(n || 0);
+  if (el2) el2.innerText = String(n || 0);
+}
+
+/* Merge strategy: serverCart preferred; quantities are summed */
+function mergeCarts(serverCart, localCart) {
+  const merged = Object.assign({}, serverCart || {});
+  for (const k of Object.keys(localCart || {})) {
+    if (!merged[k]) merged[k] = localCart[k];
+    else merged[k].qty = (merged[k].qty || 0) + (localCart[k].qty || 0);
+  }
+  return merged;
+}
+
+/* Supabase-backed helpers to persist/restore cart for authenticated users.
+   Assumes `supabase` variable is available (it already is in your site_header.js).
+*/
+async function saveCartForUser(userId) {
+  if (!userId) return;
+  const items = readCart();
+  try {
+    // upsert row (create or replace) — requires `carts` table in Supabase
+    await supabase.from('carts').upsert({ user_id: userId, items }).throwOnError();
+  } catch (err) {
+    console.warn('saveCartForUser error', err);
+  }
+}
+
+async function loadCartForUser(userId) {
+  if (!userId) return null;
+  try {
+    const { data, error } = await supabase.from('carts').select('items').eq('user_id', userId).single();
+    if (error) {
+      // no row or other error — treat as empty
+      console.warn('loadCartForUser supabase error', error);
+      return null;
+    }
+    return data?.items || null;
+  } catch (err) {
+    console.warn('loadCartForUser exception', err);
+    return null;
+  }
+}
+
 /* ----- modal accessibility helpers ----- */
 function _disablePageForModal() {
   const main = document.querySelector('main') || document.body;
@@ -457,3 +517,66 @@ document.addEventListener('DOMContentLoaded', () => {
 // expose open/close for manual testing
 window.openModal = openModal;
 window.closeModal = closeModal;
+
+/* --------- auth-cart sync wiring (append near end of site_header.js) --------- */
+
+(async function attachCartAuthSync() {
+  try {
+    // keep the header cart badge updated when local cart changes
+    window.addEventListener('storage', () => setCartCount(cartTotalCount()));
+
+    // On auth state change: when a user signs in, merge their server cart into local cart
+    try {
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        const user = session?.user || (await supabase.auth.getUser()).data?.user || null;
+        if (user && user.id) {
+          try {
+            const server = await loadCartForUser(user.id);
+            const local = readCart();
+            if (server) {
+              const merged = mergeCarts(server, local);
+              try { localStorage.setItem('rs_cart_v1', JSON.stringify(merged)); } catch (e) { console.warn(e); }
+              window.dispatchEvent(new Event('storage'));
+              setCartCount(cartTotalCount());
+            } else if (Object.keys(local).length) {
+              // persist local cart to server (first-time save)
+              await saveCartForUser(user.id);
+            }
+          } catch (e) { console.warn('auth-state cart merge failed', e); }
+        }
+      });
+    } catch (e) { /* some older supabase builds may not expose onAuthStateChange; ignore */ }
+
+    // Attach logout click handler that persists or clears cart appropriately
+    const logoutBtn = document.getElementById('rs-logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async (ev) => {
+        try { ev && ev.preventDefault(); } catch (e) {}
+        // get current user (best-effort)
+        let currentUser = null;
+        try {
+          const ures = await supabase.auth.getUser();
+          currentUser = ures?.data?.user || ures?.user || null;
+        } catch (e) { /* ignore */ }
+
+        if (currentUser && currentUser.id) {
+          // persist cart to server for that user
+          try { await saveCartForUser(currentUser.id); } catch (e) { console.warn(e); }
+          // if you want local cart cleared on logout, uncomment next line:
+          // try { localStorage.removeItem('rs_cart_v1'); window.dispatchEvent(new Event('storage')); } catch(e){}
+        } else {
+          // anonymous: clear the local cart so badge becomes zero after logout
+          try { localStorage.removeItem('rs_cart_v1'); window.dispatchEvent(new Event('storage')); } catch (e) {}
+        }
+
+        try { await supabase.auth.signOut(); } catch (e) {}
+        // update UI badge
+        setCartCount(cartTotalCount());
+        // then navigate away or refresh
+        window.location.href = '/';
+      });
+    }
+  } catch (err) {
+    console.warn('attachCartAuthSync failed', err);
+  }
+})();
