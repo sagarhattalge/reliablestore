@@ -39,9 +39,25 @@
   <script type="module">
     import { supabase } from '/assets/js/supabase_client.js';
     // helper to read/write cart
-    const CART_KEY = 'rs_cart_v1';
-    function readCart(){ try{ return JSON.parse(localStorage.getItem(CART_KEY) || '{}'); }catch(e){ return {}; } }
-    function writeCart(cart){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); window.dispatchEvent(new Event('storage')); }
+    // helper to read/write cart (centralised, robust)
+const CART_KEY = 'rs_cart_v1';
+function readCart() {
+  try {
+    return JSON.parse(localStorage.getItem(CART_KEY) || '{}');
+  } catch (e) {
+    console.warn('readCart parse error', e);
+    return {};
+  }
+}
+function writeCart(cart) {
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  } catch (e) {
+    console.warn('writeCart error', e);
+  }
+  // native storage event doesn't fire in same tab, so dispatch a synthetic one for same-tab listeners
+  try { window.dispatchEvent(new Event('storage')); } catch (e) {}
+}
 
     function formatPrice(n){ return Number(n||0).toFixed(2); }
 
