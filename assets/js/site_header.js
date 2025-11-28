@@ -305,55 +305,90 @@ function setupAuthModal() {
   });
 
   // Sign in handler
-  if (signinBtn) signinBtn.addEventListener("click", async (e) => {
+  // helper: wait for SDK to report a user (polling)
+async function waitForSdkUser(timeoutMs = 8000, intervalMs = 250) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
     try {
-      try { e.preventDefault(); } catch (_) {}
-      if (passwordError) passwordError.textContent = "";
-      const email = (knownEmailText?.textContent || "").trim();
-      const pw = (passwordInput?.value || "").trim();
-      if (!email || !pw) { if (passwordError) passwordError.textContent = "Enter your password"; return; }
+      const r = await supabase.auth.getUser().catch(() => null);
+      const user = r?.data?.user || r?.user || null;
+      if (user) return user;
+    } catch (_) {}
+    await new Promise(res => setTimeout(res, intervalMs));
+  }
+  return null;
+}
 
-      signinBtn.disabled = true;
-      const res = await signInWithPassword(email, pw);
-      signinBtn.disabled = false;
-      if (res.error) {
-        if (passwordError) passwordError.textContent = res.error.message || "Sign in failed";
-        return;
-      }
+if (signinBtn) signinBtn.addEventListener('click', async (e) => {
+  try {
+    try { e.preventDefault(); } catch (_) {}
+    if (passwordError) passwordError.textContent = '';
+    const email = (knownEmailText?.textContent || '').trim();
+    const pw = (passwordInput?.value || '').trim();
+    if (!email || !pw) { if (passwordError) passwordError.textContent = 'Enter your password'; return; }
 
-      // If signInWithPassword returned data.session, seed SDK session (best-effort)
-      try {
-        if (!res.error && res.data?.session) {
-          await supabase.auth.setSession({
-            access_token: res.data.session.access_token,
-            refresh_token: res.data.session.refresh_token
-          });
-        } else {
-          // fallback: seed from storage if present
-          const storageKey = supabase.storageKey || ("rs_supabase_auth_token_v1");
-          const raw = localStorage.getItem(storageKey);
-          if (raw) {
-            let parsed = null;
-            try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
-            const access_token = parsed?.access_token || parsed?.currentSession?.access_token || null;
-            const refresh_token = parsed?.refresh_token || parsed?.currentSession?.refresh_token || null;
-            if (access_token) {
-              await supabase.auth.setSession({ access_token, refresh_token }).catch(() => {});
-            }
-          }
-        }
-      } catch (e) { console.warn("setSession after sign-in failed", e); }
+    signinBtn.disabled = true;
 
-      // Success: close modal and go to returnTo or refresh UI
-      closeModal();
-      const rt = new URLSearchParams(window.location.search).get("returnTo") || returnToEncoded();
-      try { window.location.href = decodeURIComponent(rt || "/"); } catch (e) { window.location.href = "/"; }
-    } catch (err) {
-      console.error("signin handler error", err);
-      if (passwordError) passwordError.textContent = "Unexpected error. See console.";
-      try { signinBtn.disabled = false; } catch (_) {}
+    // 1) Attempt sign-in
+    const res = await signInWithPassword(email, pw);
+    signinBtn.disabled = false;
+
+    if (res.error) {
+      if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed';
+      return;
     }
-  });
+
+    // 2) If server returned a session, seed SDK with it
+    const session = res.data?.session || null;
+    try {
+      if (session && session.access_token) {
+        // Try setting SDK session so supabase.auth.getUser() will work
+        const setRes = await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        }).catch(err => ({ error: err }));
+        // optional debug
+        if (setRes && setRes.error) console.warn('setSession after signIn returned error', setRes.error);
+      }
+    } catch (err) {
+      console.warn('setSession after sign-in threw', err);
+    }
+
+    // 3) Wait briefly for SDK to pick up the new user
+    const user = await waitForSdkUser(8000);
+    if (!user) {
+      // Last-resort: read stored token from storageKey and seed SDK again
+      try {
+        const storageKey = supabase.storageKey || ('rs_supabase_auth_token_v1');
+        const raw = localStorage.getItem(storageKey);
+        let parsed = null;
+        try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+        const at = parsed?.access_token || parsed?.currentSession?.access_token || null;
+        const rt = parsed?.refresh_token || parsed?.currentSession?.refresh_token || null;
+        if (at) {
+          await supabase.auth.setSession({ access_token: at, refresh_token: rt }).catch(() => {});
+          const user2 = await waitForSdkUser(4000);
+          if (!user2) console.warn('SDK still did not reflect user after re-seeding from storage; continuing anyway');
+        } else {
+          // no token found in storage; it's okay — will proceed as-is
+          console.warn('no stored access token found to re-seed SDK');
+        }
+      } catch (err) {
+        console.warn('re-seed-from-storage failed', err);
+      }
+    }
+
+    // 4) Close modal and navigate (do not block UX)
+    try { closeModal(); } catch (e) {}
+    const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+    window.location.href = decodeURIComponent(rt || '/');
+
+  } catch (err) {
+    console.error('signin handler error', err);
+    if (passwordError) passwordError.textContent = 'Unexpected error. See console.';
+    try { signinBtn.disabled = false; } catch (_) {}
+  }
+});
 
   // Sign up handler
   if (signupBtn) signupBtn.addEventListener("click", async (e) => {
