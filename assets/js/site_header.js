@@ -9,15 +9,41 @@ const SUPABASE_ANON_KEY = (typeof window.SUPABASE_ANON_KEY !== "undefined" && wi
 
 window.__rs_block_auto_modal = true; // guard to avoid accidental auto open
 
+/* -----------------------------
+   === IMPORTANT: seed SDK session
+   -----------------------------
+   If a valid access/refresh token pair is present in localStorage (the same key
+   used by the SDK), setSession() seeds the SDK internal state so subsequent
+   calls to supabase.auth.getSession()/getUser() won't time out or return
+   AuthSessionMissingError. We run this synchronously on module load.
+*/
+(function seedSupabaseSdkFromStorage() {
+  try {
+    const storageKey = supabase?.storageKey || "rs_supabase_auth_token_v1";
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return;
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+    const access_token = parsed?.access_token || parsed?.currentSession?.access_token || null;
+    const refresh_token = parsed?.refresh_token || parsed?.currentSession?.refresh_token || null;
+    if (!access_token) return;
+    // seed SDK - ignorable failure (best-effort)
+    supabase.auth.setSession({ access_token, refresh_token }).catch((e) => {
+      // don't spam console, but keep a small debug line
+      console.debug("seedSupabaseSdkFromStorage: setSession failed", e && (e.message || e));
+    });
+  } catch (err) {
+    console.warn("seedSupabaseSdkFromStorage error", err);
+  }
+})();
+
 /* small helpers */
 const $ = (sel) => document.querySelector(sel);
 const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || "/");
 
-/* ===== window.RSCart =====
-   Namespaced cart helpers to avoid duplicate globals across scripts.
-*/
+/* ===== window.RSCart (namespaced cart helpers) ===== */
 window.RSCart = window.RSCart || (function () {
   const ns = {};
 
@@ -303,7 +329,7 @@ function setupAuthModal() {
             refresh_token: res.data.session.refresh_token
           });
         } else {
-          // As some supabase SDK versions return differently, try seeding from localStorage if present
+          // fallback: seed from storage if present
           const storageKey = supabase.storageKey || ("rs_supabase_auth_token_v1");
           const raw = localStorage.getItem(storageKey);
           if (raw) {
@@ -321,7 +347,6 @@ function setupAuthModal() {
       // Success: close modal and go to returnTo or refresh UI
       closeModal();
       const rt = new URLSearchParams(window.location.search).get("returnTo") || returnToEncoded();
-      // Refresh the page to ensure header UI reflects logged-in state
       try { window.location.href = decodeURIComponent(rt || "/"); } catch (e) { window.location.href = "/"; }
     } catch (err) {
       console.error("signin handler error", err);
