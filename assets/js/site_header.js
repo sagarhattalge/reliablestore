@@ -411,7 +411,7 @@ export function renderHeaderExtras() {
     if (logoutBtn) logoutBtn.style.display = loggedIn ? "" : "none";
   }
 
-  async function refreshAuthUI() {
+    async function refreshAuthUI() {
     // 1) SDK fast checks (getSession/getUser) with timeouts
     try {
       try {
@@ -439,19 +439,25 @@ export function renderHeaderExtras() {
     }
 
     // 2) Fallback explicit fetch to /auth/v1/user using anon key + stored access token
+    //    Important: SKIP the fetch entirely if there is no stored access token
     try {
       const storageKey = supabase.storageKey || ("sb-" + (supabase.supabaseUrl || "").replace(/^https?:\/\//, "").split(".")[0] + "-auth-token");
       const raw = localStorage.getItem(storageKey);
       let parsed;
       try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
       const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
-      const anonKey = (typeof SUPABASE_ANON_KEY !== "undefined" && SUPABASE_ANON_KEY) || supabase?.supabaseKey || "";
 
+      // If there is no access token stored, treat as signed-out and do NOT call /auth/v1/user.
+      if (!access_token) {
+        setUi(false);
+        return;
+      }
+
+      const anonKey = (typeof SUPABASE_ANON_KEY !== "undefined" && SUPABASE_ANON_KEY) || supabase?.supabaseKey || "";
       if (!anonKey) { setUi(false); return; }
 
       const url = (supabase.supabaseUrl || "").replace(/\/$/, "") + "/auth/v1/user";
-      const headers = { "apikey": anonKey };
-      if (access_token) headers["Authorization"] = "Bearer " + access_token;
+      const headers = { "apikey": anonKey, "Authorization": "Bearer " + access_token };
 
       const resp = await fetch(url, { method: "GET", mode: "cors", cache: "no-store", headers });
       if (resp && resp.status === 200) { setUi(true); return; }
