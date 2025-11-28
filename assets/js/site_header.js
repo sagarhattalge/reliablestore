@@ -1,21 +1,19 @@
 // assets/js/site_header.js
 import { supabase } from '/assets/js/supabase_client.js';
 
+// Endpoint for edge function check-identifier (optional)
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || window.SUPABASE_ANON_KEY || '';
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
 
 window.__rs_block_auto_modal = true;
 
-/* small helpers */
 const $ = (sel) => document.querySelector(sel);
 const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
-/* ======= window.RSCart (namespaced) ======= */
 window.RSCart = window.RSCart || (function(){
   const ns = {};
-
   ns.readCart = (typeof window.readCart === 'function') ? window.readCart
                : (typeof window.getCart === 'function') ? window.getCart
                : (typeof window.getCartLocal === 'function') ? window.getCartLocal
@@ -23,7 +21,6 @@ window.RSCart = window.RSCart || (function(){
                    try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
                    catch (e) { console.warn('RSCart.readCart parse error', e); return {}; }
                  };
-
   ns.writeCart = (typeof window.writeCart === 'function') ? window.writeCart
                 : (typeof window.setCart === 'function') ? window.setCart
                 : (typeof window.setCartLocal === 'function') ? window.setCartLocal
@@ -32,20 +29,17 @@ window.RSCart = window.RSCart || (function(){
                     catch (e) { console.warn('RSCart.writeCart error', e); }
                     try { window.dispatchEvent(new Event('storage')); } catch(e){}
                   };
-
   ns.cartTotalCount = function() {
     const c = ns.readCart();
     try { return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0); }
     catch (e) { return 0; }
   };
-
   ns.setCartCountUi = function(n){
     const el1 = document.getElementById('cart-count');
     const el2 = document.getElementById('cart_count');
     if (el1) el1.innerText = String(n || 0);
     if (el2) el2.innerText = String(n || 0);
   };
-
   ns.mergeCarts = function(serverCart, localCart) {
     const merged = Object.assign({}, serverCart || {});
     for (const k of Object.keys(localCart || {})) {
@@ -54,7 +48,6 @@ window.RSCart = window.RSCart || (function(){
     }
     return merged;
   };
-
   ns.saveCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return;
     const items = ns.readCart();
@@ -67,7 +60,6 @@ window.RSCart = window.RSCart || (function(){
       return { error: err };
     }
   };
-
   ns.loadCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return null;
     try {
@@ -83,11 +75,9 @@ window.RSCart = window.RSCart || (function(){
       return null;
     }
   };
-
   return ns;
 })();
 
-/* modal helpers */
 function _disablePageForModal() {
   const main = document.querySelector('main') || document.body;
   try { main.inert = true; } catch (e) { main.setAttribute('aria-hidden', 'true'); }
@@ -123,25 +113,15 @@ function showStep(id) {
   if (el) { el.classList.remove('hidden'); el.style.display = 'block'; }
 }
 
-/* Supabase helpers */
 async function signInWithPassword(email, password) {
-  try {
-    // supabase js v2 returns { data, error } or { data: { session, user } }
-    const res = await supabase.auth.signInWithPassword({ email, password }).catch(e => ({ error: e }));
-    return res;
-  } catch (e) {
-    return { error: e };
-  }
+  try { return await supabase.auth.signInWithPassword({ email, password }); }
+  catch (e) { return { error: e }; }
 }
 async function signUpWithEmail(email, password, metadata = {}) {
-  try {
-    return await supabase.auth.signUp({ email, password, options: { data: metadata }}).catch(e => ({ error: e }));
-  } catch (e) {
-    return { error: e };
-  }
+  try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); }
+  catch (e) { return { error: e }; }
 }
 
-/* Edge function check */
 async function checkExistingByEmail(identifier) {
   try {
     if (!CHECK_IDENTIFIER_ENDPOINT) { console.warn('CHECK_IDENTIFIER_ENDPOINT not configured'); return null; }
@@ -157,12 +137,12 @@ async function checkExistingByEmail(identifier) {
 }
 window.checkExistingByEmail = checkExistingByEmail;
 
-/* Setup modal wiring (elements + handlers) */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) return;
 
+  // elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext  = document.getElementById('rs-identifier-next');
   const identifierError = document.getElementById('rs-identifier-error');
@@ -184,13 +164,22 @@ function setupAuthModal() {
 
   const closeBtns = $all('[data-rs-close]').filter(el => !el.classList.contains('rs-modal-backdrop'));
 
-  toggle.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; openModal({ force: true }); showStep('rs-step-enter'); if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); } if (identifierError) identifierError.textContent = ''; });
+  toggle.addEventListener('click', (e) => {
+    try { e.preventDefault(); } catch (_) {}
+    openModal({ force: true });
+    showStep('rs-step-enter');
+    if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); }
+    if (identifierError) identifierError.textContent = '';
+  });
 
   closeBtns.forEach(b => b.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  if (signupAccept && signupBtn) signupAccept.addEventListener('change', () => { if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; } else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; } });
+  if (signupAccept && signupBtn) signupAccept.addEventListener('change', () => {
+    if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; }
+    else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
+  });
 
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
@@ -199,31 +188,16 @@ function setupAuthModal() {
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
         identifierNext.disabled = false;
         if (!res) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
-        if (res.exists && res.email) {
-          if (knownEmailText) knownEmailText.textContent = res.email;
-          if (passwordInput) passwordInput.value = '';
-          showStep('rs-step-password');
-          return;
-        } else if (res.exists) {
-          showStep('rs-step-password');
-          return;
-        } else {
-          if (signupEmail) signupEmail.value = '';
-          if (signupName) signupName.value = '';
-          if (signupPassword) signupPassword.value = '';
-          showStep('rs-step-signup');
-          signupEmail && signupEmail.focus();
-          return;
-        }
+        if (res.exists && res.email) { if (knownEmailText) knownEmailText.textContent = res.email; if (passwordInput) passwordInput.value = ''; showStep('rs-step-password'); return; }
+        else if (res.exists) { showStep('rs-step-password'); return; }
+        else { if (signupEmail) signupEmail.value = ''; if (signupName) signupName.value = ''; if (signupPassword) signupPassword.value = ''; showStep('rs-step-signup'); signupEmail && signupEmail.focus(); return; }
       }
 
-      // email branch
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
@@ -261,27 +235,17 @@ function setupAuthModal() {
       signinBtn.disabled = true;
       const res = await signInWithPassword(email, pw);
       signinBtn.disabled = false;
+      if (res.error) { if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed'; return; }
 
-      if (res.error) {
-        // SDK returned an error object
-        if (passwordError) passwordError.textContent = res.error?.message || String(res.error);
-        return;
-      }
-
-      // Many supabase versions return session in different places; handle both shapes
-      const session = res?.data?.session || res?.session || res?.data?.access_token ? res.data : null;
-
-      if (res.data?.session || res.session) {
-        // seed SDK internal state (safe)
-        try {
+      try {
+        if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
-            access_token: (res.data?.session?.access_token || res.session?.access_token),
-            refresh_token: (res.data?.session?.refresh_token || res.session?.refresh_token)
-          }).catch(() => {});
-        } catch (e) { console.warn('setSession after sign-in failed', e); }
-      }
+            access_token: res.data.session.access_token,
+            refresh_token: res.data.session.refresh_token
+          });
+        }
+      } catch (e) { console.warn('setSession after sign-in failed', e); }
 
-      // After successful sign-in we close modal and redirect/refresh
       closeModal();
       const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
       window.location.href = decodeURIComponent(rt || '/');
@@ -306,7 +270,6 @@ function setupAuthModal() {
       signupBtn.disabled = true;
       const res = await signUpWithEmail(email, pw, { full_name: name });
       signupBtn.disabled = false;
-
       if (res.error) { if (signupError) signupError.textContent = res.error.message || 'Signup failed'; return; }
 
       const emailSentTo = email;
@@ -322,12 +285,11 @@ function setupAuthModal() {
   });
 
   if (confResend) confResend.addEventListener('click', async (e) => { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } });
-
   if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
   if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 }
 
-/* header extras (cart + auth UI) */
+/* header extras */
 export function renderHeaderExtras() {
   try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) { console.warn('renderHeaderExtras cart count init failed', e); }
   window.addEventListener('storage', () => { try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {} });
@@ -338,9 +300,7 @@ export function renderHeaderExtras() {
 
   function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
 
-  /* Safe get session/user with timeouts + fallback that avoids 401 noise */
   async function safeGetSessionAndUser() {
-    // 1) try getSession quickly
     try {
       const sessRes = await Promise.race([
         supabase.auth.getSession(),
@@ -348,71 +308,65 @@ export function renderHeaderExtras() {
       ]);
       const session = sessRes?.data?.session || null;
       const user = session?.user || null;
-      if (user) return { session, user };
-    } catch (e) { console.warn('getSession fast check failed/timeout', e); }
+      return { session, user };
+    } catch (e) {
+      console.warn('getSession fast check failed/timeout', e);
+    }
 
-    // 2) try getUser with slightly longer timeout
     try {
       const userRes = await Promise.race([
         supabase.auth.getUser(),
         new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 12000))
       ]);
       const user = userRes?.data?.user || userRes?.user || null;
-      if (user) return { session: null, user };
-    } catch (e) { console.warn('supabase.getUser/getSession failed/timeout', e); }
-
-    // 3) fallback: only attempt manual fetch to auth/v1/user if we actually have an access_token stored.
-    try {
-      const storageKey = supabase.storageKey || ('rs_supabase_auth_token_v1');
-      const raw = localStorage.getItem(storageKey);
-      let parsed;
-      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
-      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
-
-      // If there's no access token, do NOT call auth/v1/user (avoids 401 noise).
-      if (!access_token) {
-        return { session: null, user: null };
-      }
-
-      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
-      if (!anonKey) return { session: null, user: null };
-
-      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-      const headers = { 'apikey': anonKey, 'Authorization': 'Bearer ' + access_token };
-
-      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
-      if (resp && resp.status === 200) {
-        const j = await resp.json().catch(() => null);
-        return { session: null, user: j || null };
-      } else {
-        return { session: null, user: null };
-      }
-    } catch (err) {
-      console.warn('fallback token check failed', err);
+      return { session: null, user };
+    } catch (e) {
+      console.warn('supabase.getUser/getSession failed/timeout', e);
       return { session: null, user: null };
     }
   }
 
   async function refreshAuthUI() {
     try {
-      const { user } = await safeGetSessionAndUser();
-      setUi(!!user);
-      return;
+      const { session, user } = await safeGetSessionAndUser();
+      if (user) { setUi(true); return; }
     } catch (e) {
-      console.warn('refreshAuthUI error', e);
+      console.warn('safeGetSessionAndUser failed', e);
+    }
+
+    // Fallback check (explicit fetch using anon + stored access token)
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      const raw = localStorage.getItem(storageKey);
+      let parsed;
+      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
+
+      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
+      if (!anonKey) { setUi(false); return; }
+
+      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
+      const headers = { 'apikey': anonKey };
+      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
+
+      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
+      if (resp && resp.status === 200) { setUi(true); return; }
+      else { setUi(false); return; }
+    } catch (err) {
+      console.warn('fallback token check failed', err);
       setUi(false);
     }
   }
 
-  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch(e => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
+  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch((e) => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async (e) => {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
-      try { await supabase.auth.signOut().catch(()=>{}); } catch (e) {}
+      try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
       try {
-        const storageKey = supabase.storageKey || ('rs_supabase_auth_token_v1');
+        const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
         localStorage.removeItem(storageKey);
       } catch(e){}
       try { alert('You have been logged out.'); } catch (e) {}
@@ -421,20 +375,18 @@ export function renderHeaderExtras() {
   }
 }
 
-/* auto-run on DOM ready */
+/* auto-run */
 document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
 
-/* expose for manual debug */
 window.openModal = openModal;
 window.closeModal = closeModal;
 
-/* auth-cart sync wiring */
+/* auth-cart sync */
 (async function attachCartAuthSync() {
   try {
     window.addEventListener('storage', () => { try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){} });
-
     try {
       supabase.auth.onAuthStateChange(async (event, session) => {
         const user = session?.user || (await supabase.auth.getUser()).data?.user || null;
@@ -459,13 +411,7 @@ window.closeModal = closeModal;
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async (ev) => {
         try { ev && ev.preventDefault(); } catch (e) {}
-        let currentUser = null;
-        try { const ures = await supabase.auth.getUser(); currentUser = ures?.data?.user || ures?.user || null; } catch (e) {}
-        if (currentUser && currentUser.id) {
-          try { await window.RSCart.saveCartForUser(currentUser.id); } catch (e) { console.warn(e); }
-        } else {
-          try { window.RSCart.writeCart({}); window.dispatchEvent(new Event('storage')); } catch (e) {}
-        }
+        try { const ures = await supabase.auth.getUser(); const currentUser = ures?.data?.user || ures?.user || null; if (currentUser && currentUser.id) { try { await window.RSCart.saveCartForUser(currentUser.id); } catch (e) { console.warn(e); } } else { try { window.RSCart.writeCart({}); window.dispatchEvent(new Event('storage')); } catch (e) {} } } catch(e){}
         try { await supabase.auth.signOut(); } catch (e) {}
         try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){}
         window.location.href = '/';
