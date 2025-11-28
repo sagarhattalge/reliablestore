@@ -271,40 +271,87 @@ function setupAuthModal() {
 
   // Sign in
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
-    try {
-      try { e.preventDefault(); } catch (_) {}
-      if (passwordError) passwordError.textContent = '';
-      const email = (knownEmailText?.textContent || '').trim();
-      const pw = (passwordInput?.value || '').trim();
-      if (!email || !pw) { if (passwordError) passwordError.textContent = 'Enter your password'; return; }
+  try {
+    try { e.preventDefault(); } catch (_) {}
+    if (passwordError) passwordError.textContent = '';
+    const email = (knownEmailText?.textContent || '').trim();
+    const pw = (passwordInput?.value || '').trim();
+    if (!email || !pw) { if (passwordError) passwordError.textContent = 'Enter your password'; return; }
 
-      signinBtn.disabled = true;
-      const res = await signInWithPassword(email, pw);
+    signinBtn.disabled = true;
+
+    // 1) call sign-in and wait for explicit session result
+    const res = await signInWithPassword(email, pw);
+
+    // 2) basic error handling
+    if (res.error) {
       signinBtn.disabled = false;
-      if (res.error) {
-        if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed';
-        return;
-      }
-
-      // set session if returned (best-effort)
-      try {
-        if (!res.error && res.data?.session) {
-          await supabase.auth.setSession({
-            access_token: res.data.session.access_token,
-            refresh_token: res.data.session.refresh_token
-          });
-        }
-      } catch (e) { console.warn('setSession after sign-in failed', e); }
-
-      closeModal();
-      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-      window.location.href = decodeURIComponent(rt || '/');
-    } catch (err) {
-      console.error('signin handler error', err);
-      if (passwordError) passwordError.textContent = 'Unexpected error. See console.';
-      try { signinBtn.disabled = false; } catch (_) {}
+      if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed';
+      return;
     }
-  });
+
+    // 3) If SDK returned a session, explicitly seed it into the SDK (best-effort)
+    try {
+      const sess = res.data?.session || null;
+      if (sess && sess.access_token) {
+        // Seed SDK internal state so subsequent getUser/getSession calls succeed
+        await supabase.auth.setSession({
+          access_token: sess.access_token,
+          refresh_token: sess.refresh_token
+        }).catch(err => {
+          console.warn('setSession after sign-in failed (non-fatal):', err);
+        });
+      }
+    } catch (e) {
+      console.warn('seeding session after sign-in threw', e);
+    }
+
+    // 4) Short-circuit double-handling: set a small guard so the immediate onAuthStateChange we
+    //    may receive doesn't trigger duplicate UI/merge work. It will auto-expire.
+    window.__RS_ignore_next_auth_event = true;
+    setTimeout(() => { window.__RS_ignore_next_auth_event = false; }, 900);
+
+    // 5) Ensure SDK user is available (try a few fast attempts)
+    let userObj = null;
+    for (let i=0;i<8;i++) {
+      const ures = await supabase.auth.getUser().catch(()=>({ error: true }));
+      userObj = ures?.data?.user || ures?.user || null;
+      if (userObj && userObj.id) break;
+      await new Promise(r=>setTimeout(r, 180));
+    }
+
+    // 6) Close modal (only if user established)
+    if (userObj && userObj.id) {
+      try { closeModal(); } catch(e){ console.warn('closeModal fail', e); }
+    } else {
+      // fallback close to avoid modal stuck, but log warning
+      try { closeModal(); } catch(e){ console.warn('closeModal fail', e); }
+      console.warn('Sign-in succeeded but user object unavailable immediately; UI update will follow shortly.');
+    }
+
+    // 7) Trigger a UI/merge refresh now — call your refresh routine (if exported) or global handler
+    try {
+      if (typeof window.performCartMergeNow === 'function') {
+        await window.performCartMergeNow();
+      } else {
+        // try calling the same functions used by the header to re-evaluate UI/merge
+        if (typeof refreshAuthUI === 'function') await refreshAuthUI();
+        // The merge handler is also triggered by onAuthStateChange — allow it to run.
+      }
+    } catch (e) {
+      console.warn('post-signin refresh failed', e);
+    }
+
+    // 8) redirect back (existing behaviour)
+    const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+    window.location.href = decodeURIComponent(rt || '/');
+
+  } catch (err) {
+    console.error('signin handler error', err);
+    if (passwordError) passwordError.textContent = 'Unexpected error. See console.';
+    try { signinBtn.disabled = false; } catch (_) {}
+  }
+});
 
   // Sign up
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
