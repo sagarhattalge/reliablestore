@@ -1,11 +1,11 @@
 // assets/js/site_header.js
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (if used)
+// Edge function endpoint
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || (window.SUPABASE_ANON_KEY || '');
 
-// Prevent accidental auto-open of modal on page load
+// guard to avoid auto-open
 window.__rs_block_auto_modal = true;
 
 /* small helpers */
@@ -14,7 +14,7 @@ const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
-/* ----- RSCart (namespaced cart helpers) ----- */
+/* ====== RSCart namespaced helpers (unchanged behaviour) ====== */
 window.RSCart = window.RSCart || (function(){
   const ns = {};
   ns.readCart = (typeof window.readCart === 'function') ? window.readCart
@@ -24,6 +24,7 @@ window.RSCart = window.RSCart || (function(){
                    try { return JSON.parse(localStorage.getItem('rs_cart_v1') || '{}'); }
                    catch (e) { console.warn('RSCart.readCart parse error', e); return {}; }
                  };
+
   ns.writeCart = (typeof window.writeCart === 'function') ? window.writeCart
                 : (typeof window.setCart === 'function') ? window.setCart
                 : (typeof window.setCartLocal === 'function') ? window.setCartLocal
@@ -32,17 +33,20 @@ window.RSCart = window.RSCart || (function(){
                     catch (e) { console.warn('RSCart.writeCart error', e); }
                     try { window.dispatchEvent(new Event('storage')); } catch(e){}
                   };
+
   ns.cartTotalCount = function() {
     const c = ns.readCart();
     try { return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0); }
     catch (e) { return 0; }
   };
+
   ns.setCartCountUi = function(n){
     const el1 = document.getElementById('cart-count');
     const el2 = document.getElementById('cart_count');
     if (el1) el1.innerText = String(n || 0);
     if (el2) el2.innerText = String(n || 0);
   };
+
   ns.mergeCarts = function(serverCart, localCart) {
     const merged = Object.assign({}, serverCart || {});
     for (const k of Object.keys(localCart || {})) {
@@ -51,6 +55,7 @@ window.RSCart = window.RSCart || (function(){
     }
     return merged;
   };
+
   ns.saveCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return;
     const items = ns.readCart();
@@ -58,11 +63,9 @@ window.RSCart = window.RSCart || (function(){
       const { data, error } = await supabase.from('carts').upsert({ user_id: userId, items }).select();
       if (error) { console.warn('RSCart.saveCartForUser error', error); return { error }; }
       return { data };
-    } catch (err) {
-      console.warn('RSCart.saveCartForUser exception', err);
-      return { error: err };
-    }
+    } catch (err) { console.warn('RSCart.saveCartForUser exception', err); return { error: err }; }
   };
+
   ns.loadCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return null;
     try {
@@ -73,11 +76,9 @@ window.RSCart = window.RSCart || (function(){
         .maybeSingle();
       if (error) { console.warn('loadCartForUser supabase error', error); return null; }
       return data?.items || null;
-    } catch (err) {
-      console.warn('RSCart.loadCartForUser exception', err);
-      return null;
-    }
+    } catch (err) { console.warn('RSCart.loadCartForUser exception', err); return null; }
   };
+
   return ns;
 })();
 
@@ -91,7 +92,7 @@ function _restorePageAfterModal() {
   try { main.inert = false; } catch (e) { main.removeAttribute('aria-hidden'); }
 }
 
-/* ----- open/close modal ----- */
+/* ----- open/close modal (Option B: no outside-click close) ----- */
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) return;
@@ -112,14 +113,14 @@ function closeModal() {
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
 
-/* ----- showStep helper ----- */
+/* ----- show one step helper ----- */
 function showStep(id) {
   $all('.rs-step').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; });
   const el = document.getElementById(id);
   if (el) { el.classList.remove('hidden'); el.style.display = 'block'; }
 }
 
-/* ----- Supabase auth helpers ----- */
+/* ----- Supabase helpers (simple wrappers) ----- */
 async function signInWithPassword(email, password) {
   try { return await supabase.auth.signInWithPassword({ email, password }); }
   catch (e) { return { error: e }; }
@@ -129,7 +130,7 @@ async function signUpWithEmail(email, password, metadata = {}) {
   catch (e) { return { error: e }; }
 }
 
-/* ----- Secure check (edge function) ----- */
+/* ----- Edge function check ----- */
 async function checkExistingByEmail(identifier) {
   try {
     if (!CHECK_IDENTIFIER_ENDPOINT) { console.warn('CHECK_IDENTIFIER_ENDPOINT not configured'); return null; }
@@ -145,66 +146,79 @@ async function checkExistingByEmail(identifier) {
 }
 window.checkExistingByEmail = checkExistingByEmail;
 
-/* ----- Utility: attempt to get session & user with retries/polling ----- */
-async function safeGetSessionAndUser({maxAttempts = 8, delayMs = 400} = {}) {
-  // returns { session, user } or nulls
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      // try getSession/getUser via SDK
-      const [sessRes, userRes] = await Promise.allSettled([
-        supabase.auth.getSession(),
-        supabase.auth.getUser()
-      ]);
+/* ----- Robust session/user detection ----- */
 
-      const session = (sessRes.status === 'fulfilled') ? sessRes.value?.data?.session || null : null;
-      const user = (userRes.status === 'fulfilled') ? (userRes.value?.data?.user || userRes.value?.user || null) : null;
-
-      if (session || user) return { session, user };
-    } catch (e) {
-      // ignore, will retry
-    }
-    await new Promise(r => setTimeout(r, delayMs));
-  }
-  // final attempt: try explicit fetch to /auth/v1/user using anon + stored token
-  try {
-    const storageKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
-    const raw = localStorage.getItem(storageKey);
-    const parsed = raw ? JSON.parse(raw) : null;
-    const token = parsed?.access_token || null;
-    const anon = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
-    if (token && anon) {
-      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers: { apikey: anon, Authorization: 'Bearer ' + token } });
-      if (resp && resp.status === 200) {
-        const userJson = await resp.json();
-        return { session: null, user: userJson };
-      }
-    }
-  } catch (e) { /* ignore */ }
-  return { session: null, user: null };
+async function timeoutPromise(p, ms, errMsg = 'timeout') {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(errMsg)), ms))]);
 }
 
-/* ----- expose quick seeding utility for console debugging ----- */
-window.seedSdkFromStorage = async function seedSdkFromStorage() {
+// Try SDK getSession/getUser with timeouts, then seed SDK from storage if token present, then manual fetch
+async function safeGetSessionAndUser() {
   try {
-    if (!window.supabase) throw new Error('supabase client missing');
-    const storageKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return { ok: false, reason: 'no token in localStorage', storageKey };
-    const parsed = raw ? JSON.parse(raw) : null;
-    const access_token = parsed?.access_token || null;
-    const refresh_token = parsed?.refresh_token || null;
-    if (!access_token) return { ok: false, reason: 'no access_token in stored value' };
+    // 1) try getSession quickly
+    try {
+      const sessRes = await timeoutPromise(supabase.auth.getSession(), 8000, 'getSession timeout');
+      const session = sessRes?.data?.session || null;
+      if (session && session.user) return { session, user: session.user };
+    } catch (e) {
+      // continue to try getUser next
+      console.warn('getSession fast check failed/timeout', e && (e.message || e));
+    }
 
-    const setRes = await supabase.auth.setSession({ access_token, refresh_token }).catch(e => ({ error: e }));
-    const got = await safeGetSessionAndUser({ maxAttempts: 6, delayMs: 500 });
-    return { ok: !!(got.user || got.session), setRes, got };
+    // 2) try getUser (slightly longer)
+    try {
+      const userRes = await timeoutPromise(supabase.auth.getUser(), 12000, 'getUser timeout');
+      const user = userRes?.data?.user || userRes?.user || null;
+      if (user) return { session: null, user };
+    } catch (e) {
+      console.warn('supabase.getUser failed/timeout', e && (e.message || e));
+    }
+
+    // 3) try seeding SDK from localStorage token (if present)
+    try {
+      if (typeof window.seedSdkFromStorage === 'function') {
+        const seed = await window.seedSdkFromStorage().catch(e => ({ ok:false, err:e }));
+        if (seed && seed.ok) {
+          // after seeding, try getUser again
+          try {
+            const userRes2 = await timeoutPromise(supabase.auth.getUser(), 8000, 'getUser-after-seed timeout');
+            const user2 = userRes2?.data?.user || userRes2?.user || null;
+            if (user2) return { session: null, user: user2 };
+          } catch (e2) { /* continue */ }
+        }
+      }
+    } catch (e) { console.warn('seedSdkFromStorage failed', e); }
+
+    // 4) final fallback: manual fetch to auth endpoint using anon key + stored token
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      const raw = localStorage.getItem(storageKey);
+      let parsed;
+      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
+      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
+      if (!anonKey) return { session: null, user: null };
+
+      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
+      const headers = { 'apikey': anonKey };
+      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
+      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers }).catch(() => null);
+      if (resp && resp.status === 200) {
+        const json = await resp.json().catch(()=>null);
+        if (json && json.id) return { session: null, user: json };
+      }
+    } catch (e) {
+      console.warn('fallback manual fetch failed', e);
+    }
+
+    return { session: null, user: null };
   } catch (err) {
-    return { ok: false, error: err };
+    console.warn('safeGetSessionAndUser unexpected error', err);
+    return { session:null, user:null };
   }
-};
+}
 
-/* ----- modal wiring and element references ----- */
+/* ----- wiring modal / events (kept same behaviour) ----- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
@@ -241,18 +255,25 @@ function setupAuthModal() {
 
   const closeBtns = $all('[data-rs-close]').filter(el => !el.classList.contains('rs-modal-backdrop'));
 
-  // open
-  toggle.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; openModal({ force: true }); showStep('rs-step-enter'); if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); } if (identifierError) identifierError.textContent = ''; });
+  toggle.addEventListener('click', (e) => {
+    try { e.preventDefault(); } catch (_) {}
+    openModal({ force: true });
+    showStep('rs-step-enter');
+    if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); }
+    if (identifierError) identifierError.textContent = '';
+  });
 
-  // close via explicit close buttons (not backdrop)
   closeBtns.forEach(b => b.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); }));
-
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  if (signupAccept && signupBtn) signupAccept.addEventListener('change', () => { if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; } else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; } });
+  if (signupAccept && signupBtn) {
+    signupAccept.addEventListener('change', () => {
+      if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; }
+      else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
+    });
+  }
 
-  // identifier -> check existing
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -260,31 +281,16 @@ function setupAuthModal() {
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
         identifierNext.disabled = false;
         if (!res) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
-        if (res.exists && res.email) {
-          if (knownEmailText) knownEmailText.textContent = res.email;
-          if (passwordInput) passwordInput.value = '';
-          showStep('rs-step-password');
-          return;
-        } else if (res.exists) {
-          showStep('rs-step-password');
-          return;
-        } else {
-          if (signupEmail) signupEmail.value = '';
-          if (signupName) signupName.value = '';
-          if (signupPassword) signupPassword.value = '';
-          showStep('rs-step-signup');
-          signupEmail && signupEmail.focus();
-          return;
-        }
+        if (res.exists && res.email) { if (knownEmailText) knownEmailText.textContent = res.email; if (passwordInput) passwordInput.value = ''; showStep('rs-step-password'); return; }
+        else if (res.exists) { showStep('rs-step-password'); return; }
+        else { if (signupEmail) signupEmail.value = ''; if (signupName) signupName.value = ''; if (signupPassword) signupPassword.value = ''; showStep('rs-step-signup'); signupEmail && signupEmail.focus(); return; }
       }
 
-      // email branch
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
@@ -311,7 +317,6 @@ function setupAuthModal() {
     }
   });
 
-  /* ---------------------- Sign in handler (robust) ---------------------- */
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -323,69 +328,40 @@ function setupAuthModal() {
       signinBtn.disabled = true;
       const res = await signInWithPassword(email, pw);
       signinBtn.disabled = false;
-      if (res.error) { if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed'; return; }
-
-      // Attempt to seed session from returned session object
-      const sessionObj = res.data?.session || res.session || null;
-      const access_token = sessionObj?.access_token || null;
-      const refresh_token = sessionObj?.refresh_token || null;
-
-      if (access_token) {
-        try {
-          // write to expected storage key
-          const storageKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
-          const storeValue = {
-            access_token,
-            refresh_token,
-            token_type: sessionObj?.token_type || 'bearer',
-            expires_in: sessionObj?.expires_in,
-            expires_at: sessionObj?.expires_at,
-            user: sessionObj?.user || res.data?.user || null
-          };
-          try { localStorage.setItem(storageKey, JSON.stringify(storeValue)); } catch (e) { console.warn('writing localStorage failed', e); }
-
-          // seed SDK state
-          const setRes = await supabase.auth.setSession({ access_token, refresh_token }).catch(e => ({ error: e }));
-          // gentle retry if necessary
-          if (setRes?.error) {
-            try { await new Promise(r => setTimeout(r, 400)); await supabase.auth.setSession({ access_token, refresh_token }); } catch (e) { console.warn('second setSession failed', e); }
-          }
-        } catch (e) { console.warn('post-signin seed failed', e); }
-      }
-
-      // wait/poll for user presence
-      const got = await safeGetSessionAndUser({ maxAttempts: 10, delayMs: 400 });
-      const userObj = got?.user || null;
-
-      if (userObj) {
-        closeModal();
-        const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-        window.location.href = decodeURIComponent(rt || '/');
+      if (res.error) {
+        if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed';
         return;
       }
 
-      // fallback explicit fetch if still no user
+      // set session if returned (best-effort)
       try {
-        const storageKey = supabase.storageKey || 'rs_supabase_auth_token_v1';
-        const raw = localStorage.getItem(storageKey);
-        const parsed = raw ? JSON.parse(raw) : null;
-        const token = parsed?.access_token || access_token || null;
-        const anon = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
-        if (token && anon) {
-          const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-          const r = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers: { apikey: anon, Authorization: 'Bearer ' + token } }).catch(e => ({ error: e }));
-          if (r && r.status === 200) {
-            closeModal();
-            const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-            window.location.href = decodeURIComponent(rt || '/');
-            return;
-          } else {
-            console.warn('fallback explicit user fetch failed', r && r.status);
-          }
+        if (!res.error && res.data?.session) {
+          await supabase.auth.setSession({
+            access_token: res.data.session.access_token,
+            refresh_token: res.data.session.refresh_token
+          }).catch(e => console.warn('setSession after sign-in failed', e));
         }
-      } catch (e) { console.warn('fallback fetch after sign-in failed', e); }
+      } catch (e) { console.warn('setSession after sign-in failed', e); }
 
-      if (passwordError) passwordError.textContent = 'Sign in may have succeeded but client session not established — try refreshing the page.';
+      // small delay + check & close modal when SDK recognizes user
+      (async function waitAndClose() {
+        for (let i = 0; i < 8; i++) {
+          try {
+            const u = await safeGetSessionAndUser();
+            if (u && u.user) {
+              closeModal();
+              const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+              window.location.href = decodeURIComponent(rt || '/');
+              return;
+            }
+          } catch(e){}
+          await new Promise(r => setTimeout(r, 400));
+        }
+        // If still not recognized, close modal and reload to pick up new session (best user experience)
+        try { closeModal(); } catch(e){}
+        try { window.location.reload(); } catch(e){}
+      })();
+
     } catch (err) {
       console.error('signin handler error', err);
       if (passwordError) passwordError.textContent = 'Unexpected error. See console.';
@@ -393,7 +369,6 @@ function setupAuthModal() {
     }
   });
 
-  /* ---------------------- Signup handler (unchanged except safety) ---------------------- */
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -426,7 +401,10 @@ function setupAuthModal() {
     }
   });
 
-  if (confResend) confResend.addEventListener('click', async (e) => { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } });
+  if (confResend) confResend.addEventListener('click', async (e) => {
+    try { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } } catch (err) { console.error('resend error', err); }
+  });
+
   if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
   if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 }
@@ -442,52 +420,31 @@ export function renderHeaderExtras() {
 
   function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
 
-  // Refresh UI: attempts SDK calls but falls back to token-based check
   async function refreshAuthUI() {
     try {
-      // quick path: poll SDK for session/user (safeGetSessionAndUser does retries)
-      const got = await safeGetSessionAndUser({ maxAttempts: 6, delayMs: 500 });
-      if (got && (got.user || got.session)) {
-        setUi(true);
-        return;
-      }
+      const u = await safeGetSessionAndUser();
+      const user = u?.user || null;
+      setUi(!!user);
+      if (user) return;
     } catch (e) {
-      console.warn('refreshAuthUI quick path failed', e);
+      console.warn('refreshAuthUI safe check failed', e);
     }
 
-    // fallback explicit token check
-    try {
-      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
-      const raw = localStorage.getItem(storageKey);
-      let parsed;
-      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
-      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
-      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
-
-      if (!anonKey) { setUi(false); return; }
-      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-      const headers = { 'apikey': anonKey };
-      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
-      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
-      if (resp && resp.status === 200) { setUi(true); return; }
-      else setUi(false);
-    } catch (e) {
-      console.warn('fallback token check failed', e);
-      setUi(false);
-    }
+    // fallback: token check via fetch (already covered in safeGetSessionAndUser) - final fallback sets UI to logged out
+    setUi(false);
   }
 
-  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch((e) => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
+  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch(e => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async (e) => {
       try { e.preventDefault && e.preventDefault(); } catch (_) {}
-      try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
       try {
         const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
         localStorage.removeItem(storageKey);
-      } catch(e){}
+      } catch (e){}
+      try { await supabase.auth.signOut().catch(()=>{}); } catch (e) {}
       try { alert('You have been logged out.'); } catch (e) {}
       window.location.href = '/';
     });
@@ -499,52 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
 
-// export open/close for debugging
+// Expose for manual testing
 window.openModal = openModal;
 window.closeModal = closeModal;
-
-/* auth-cart sync wiring */
-(async function attachCartAuthSync() {
-  try {
-    window.addEventListener('storage', () => { try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){} });
-
-    try {
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        const user = session?.user || (await supabase.auth.getUser()).data?.user || null;
-        if (user && user.id) {
-          try {
-            const server = await window.RSCart.loadCartForUser(user.id);
-            const local = window.RSCart.readCart();
-            if (server) {
-              const merged = window.RSCart.mergeCarts(server, local);
-              try { window.RSCart.writeCart(merged); } catch (e) { console.warn(e); }
-              window.dispatchEvent(new Event('storage'));
-              window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-            } else if (Object.keys(local).length) {
-              await window.RSCart.saveCartForUser(user.id);
-            }
-          } catch (e) { console.warn('auth-state cart merge failed', e); }
-        }
-      });
-    } catch (e) { /* ignore */ }
-
-    const logoutBtn = document.getElementById('rs-logout-btn');
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async (ev) => {
-        try { ev && ev.preventDefault(); } catch (e) {}
-        let currentUser = null;
-        try { const ures = await supabase.auth.getUser(); currentUser = ures?.data?.user || ures?.user || null; } catch (e) {}
-        if (currentUser && currentUser.id) {
-          try { await window.RSCart.saveCartForUser(currentUser.id); } catch (e) { console.warn(e); }
-        } else {
-          try { window.RSCart.writeCart({}); window.dispatchEvent(new Event('storage')); } catch (e) {}
-        }
-        try { await supabase.auth.signOut(); } catch (e) {}
-        try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){}
-        window.location.href = '/';
-      });
-    }
-  } catch (err) {
-    console.warn('attachCartAuthSync failed', err);
-  }
-})();
+window.safeGetSessionAndUser = safeGetSessionAndUser;
