@@ -1,11 +1,12 @@
 // assets/js/site_header.js
+// Header + Auth modal client script for ReliableStore
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint
+// Edge function endpoint (optional)
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || (window.SUPABASE_ANON_KEY || '');
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
 
-// guard to avoid auto-open
+// Guard auto-open
 window.__rs_block_auto_modal = true;
 
 /* small helpers */
@@ -14,9 +15,10 @@ const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
-/* ====== RSCart namespaced helpers (unchanged behaviour) ====== */
+/* ======= window.RSCart (namespaced cart helpers) ======= */
 window.RSCart = window.RSCart || (function(){
   const ns = {};
+
   ns.readCart = (typeof window.readCart === 'function') ? window.readCart
                : (typeof window.getCart === 'function') ? window.getCart
                : (typeof window.getCartLocal === 'function') ? window.getCartLocal
@@ -48,6 +50,7 @@ window.RSCart = window.RSCart || (function(){
   };
 
   ns.mergeCarts = function(serverCart, localCart) {
+    // Priority: serverCart base, then add/accumulate localCart items
     const merged = Object.assign({}, serverCart || {});
     for (const k of Object.keys(localCart || {})) {
       if (!merged[k]) merged[k] = localCart[k];
@@ -61,9 +64,15 @@ window.RSCart = window.RSCart || (function(){
     const items = ns.readCart();
     try {
       const { data, error } = await supabase.from('carts').upsert({ user_id: userId, items }).select();
-      if (error) { console.warn('RSCart.saveCartForUser error', error); return { error }; }
+      if (error) {
+        console.warn('RSCart.saveCartForUser error', error);
+        return { error };
+      }
       return { data };
-    } catch (err) { console.warn('RSCart.saveCartForUser exception', err); return { error: err }; }
+    } catch (err) {
+      console.warn('RSCart.saveCartForUser exception', err);
+      return { error: err };
+    }
   };
 
   ns.loadCartForUser = async function(userId) {
@@ -74,9 +83,15 @@ window.RSCart = window.RSCart || (function(){
         .select('items')
         .eq('user_id', userId)
         .maybeSingle();
-      if (error) { console.warn('loadCartForUser supabase error', error); return null; }
+      if (error) {
+        console.warn('loadCartForUser supabase error', error);
+        return null;
+      }
       return data?.items || null;
-    } catch (err) { console.warn('RSCart.loadCartForUser exception', err); return null; }
+    } catch (err) {
+      console.warn('RSCart.loadCartForUser exception', err);
+      return null;
+    }
   };
 
   return ns;
@@ -92,7 +107,7 @@ function _restorePageAfterModal() {
   try { main.inert = false; } catch (e) { main.removeAttribute('aria-hidden'); }
 }
 
-/* ----- open/close modal (Option B: no outside-click close) ----- */
+/* ----- open/close modal ----- */
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) return;
@@ -113,14 +128,14 @@ function closeModal() {
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
 
-/* ----- show one step helper ----- */
+/* ----- showStep helper ----- */
 function showStep(id) {
   $all('.rs-step').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; });
   const el = document.getElementById(id);
   if (el) { el.classList.remove('hidden'); el.style.display = 'block'; }
 }
 
-/* ----- Supabase helpers (simple wrappers) ----- */
+/* ----- Supabase helpers ----- */
 async function signInWithPassword(email, password) {
   try { return await supabase.auth.signInWithPassword({ email, password }); }
   catch (e) { return { error: e }; }
@@ -130,107 +145,29 @@ async function signUpWithEmail(email, password, metadata = {}) {
   catch (e) { return { error: e }; }
 }
 
-/* ----- Edge function check ----- */
+/* ----- checkExistingByEmail (edge function) ----- */
 async function checkExistingByEmail(identifier) {
   try {
-    if (!CHECK_IDENTIFIER_ENDPOINT) { console.warn('CHECK_IDENTIFIER_ENDPOINT not configured'); return null; }
+    if (!CHECK_IDENTIFIER_ENDPOINT) return null;
     const payload = { identifier: String(identifier || '') };
     const headers = { 'Content-Type': 'application/json' };
     if (SUPABASE_ANON_KEY) { headers['apikey'] = SUPABASE_ANON_KEY; headers['Authorization'] = 'Bearer ' + SUPABASE_ANON_KEY; }
     const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, { method: 'POST', mode: 'cors', cache: 'no-store', credentials: 'omit', headers, body: JSON.stringify(payload) });
-    if (!res.ok) { const body = await res.text().catch(() => '<no body>'); console.warn('check-identifier endpoint non-OK', res.status, body); return null; }
-    const json = await res.json().catch(() => null);
+    if (!res.ok) { const body = await res.text().catch(()=>'<no body>'); console.warn('check-identifier endpoint non-OK', res.status, body); return null; }
+    const json = await res.json().catch(()=>null);
     if (!json || typeof json.exists !== 'boolean') { console.warn('check-identifier: unexpected response', json); return null; }
     return json;
   } catch (err) { console.warn('checkExistingByEmail exception', err); return null; }
 }
 window.checkExistingByEmail = checkExistingByEmail;
 
-/* ----- Robust session/user detection ----- */
-
-async function timeoutPromise(p, ms, errMsg = 'timeout') {
-  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(errMsg)), ms))]);
-}
-
-// Try SDK getSession/getUser with timeouts, then seed SDK from storage if token present, then manual fetch
-async function safeGetSessionAndUser() {
-  try {
-    // 1) try getSession quickly
-    try {
-      const sessRes = await timeoutPromise(supabase.auth.getSession(), 8000, 'getSession timeout');
-      const session = sessRes?.data?.session || null;
-      if (session && session.user) return { session, user: session.user };
-    } catch (e) {
-      // continue to try getUser next
-      console.warn('getSession fast check failed/timeout', e && (e.message || e));
-    }
-
-    // 2) try getUser (slightly longer)
-    try {
-      const userRes = await timeoutPromise(supabase.auth.getUser(), 12000, 'getUser timeout');
-      const user = userRes?.data?.user || userRes?.user || null;
-      if (user) return { session: null, user };
-    } catch (e) {
-      console.warn('supabase.getUser failed/timeout', e && (e.message || e));
-    }
-
-    // 3) try seeding SDK from localStorage token (if present)
-    try {
-      if (typeof window.seedSdkFromStorage === 'function') {
-        const seed = await window.seedSdkFromStorage().catch(e => ({ ok:false, err:e }));
-        if (seed && seed.ok) {
-          // after seeding, try getUser again
-          try {
-            const userRes2 = await timeoutPromise(supabase.auth.getUser(), 8000, 'getUser-after-seed timeout');
-            const user2 = userRes2?.data?.user || userRes2?.user || null;
-            if (user2) return { session: null, user: user2 };
-          } catch (e2) { /* continue */ }
-        }
-      }
-    } catch (e) { console.warn('seedSdkFromStorage failed', e); }
-
-    // 4) final fallback: manual fetch to auth endpoint using anon key + stored token
-    try {
-      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
-      const raw = localStorage.getItem(storageKey);
-      let parsed;
-      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
-      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
-      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
-      if (!anonKey) return { session: null, user: null };
-
-      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-      const headers = { 'apikey': anonKey };
-      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
-      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers }).catch(() => null);
-      if (resp && resp.status === 200) {
-        const json = await resp.json().catch(()=>null);
-        if (json && json.id) return { session: null, user: json };
-      }
-    } catch (e) {
-      console.warn('fallback manual fetch failed', e);
-    }
-
-    return { session: null, user: null };
-  } catch (err) {
-    console.warn('safeGetSessionAndUser unexpected error', err);
-    return { session:null, user:null };
-  }
-}
-
-/* ----- wiring modal / events (kept same behaviour) ----- */
+/* ----- Auth modal wiring ----- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) return;
 
-  modal.style.position = modal.style.position || 'fixed';
-  modal.style.inset = modal.style.inset || '0';
-  modal.style.display = modal.style.display || 'none';
-  modal.style.zIndex = modal.style.zIndex || '1200';
-  modal.style.alignItems = modal.style.alignItems || 'center';
-  modal.style.justifyContent = modal.style.justifyContent || 'center';
-
+  // elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext  = document.getElementById('rs-identifier-next');
   const identifierError = document.getElementById('rs-identifier-error');
@@ -255,6 +192,7 @@ function setupAuthModal() {
 
   const closeBtns = $all('[data-rs-close]').filter(el => !el.classList.contains('rs-modal-backdrop'));
 
+  // open
   toggle.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     openModal({ force: true });
@@ -263,16 +201,15 @@ function setupAuthModal() {
     if (identifierError) identifierError.textContent = '';
   });
 
-  closeBtns.forEach(b => b.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); }));
+  // close via explicit close buttons (not backdrop)
+  closeBtns.forEach(b => b.addEventListener('click', (e) => { try { e.preventDefault(); } catch (_) {} ; closeModal(); }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  if (signupAccept && signupBtn) {
-    signupAccept.addEventListener('change', () => {
-      if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; }
-      else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
-    });
-  }
+  if (signupAccept && signupBtn) signupAccept.addEventListener('change', () => {
+    if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; }
+    else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
+  });
 
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
@@ -281,16 +218,31 @@ function setupAuthModal() {
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
+      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
         identifierNext.disabled = false;
         if (!res) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
-        if (res.exists && res.email) { if (knownEmailText) knownEmailText.textContent = res.email; if (passwordInput) passwordInput.value = ''; showStep('rs-step-password'); return; }
-        else if (res.exists) { showStep('rs-step-password'); return; }
-        else { if (signupEmail) signupEmail.value = ''; if (signupName) signupName.value = ''; if (signupPassword) signupPassword.value = ''; showStep('rs-step-signup'); signupEmail && signupEmail.focus(); return; }
+        if (res.exists && res.email) {
+          if (knownEmailText) knownEmailText.textContent = res.email;
+          if (passwordInput) passwordInput.value = '';
+          showStep('rs-step-password');
+          return;
+        } else if (res.exists) {
+          showStep('rs-step-password');
+          return;
+        } else {
+          if (signupEmail) signupEmail.value = '';
+          if (signupName) signupName.value = '';
+          if (signupPassword) signupPassword.value = '';
+          showStep('rs-step-signup');
+          signupEmail && signupEmail.focus();
+          return;
+        }
       }
 
+      // email branch
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
@@ -317,6 +269,7 @@ function setupAuthModal() {
     }
   });
 
+  // Sign in
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -339,29 +292,13 @@ function setupAuthModal() {
           await supabase.auth.setSession({
             access_token: res.data.session.access_token,
             refresh_token: res.data.session.refresh_token
-          }).catch(e => console.warn('setSession after sign-in failed', e));
+          });
         }
       } catch (e) { console.warn('setSession after sign-in failed', e); }
 
-      // small delay + check & close modal when SDK recognizes user
-      (async function waitAndClose() {
-        for (let i = 0; i < 8; i++) {
-          try {
-            const u = await safeGetSessionAndUser();
-            if (u && u.user) {
-              closeModal();
-              const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-              window.location.href = decodeURIComponent(rt || '/');
-              return;
-            }
-          } catch(e){}
-          await new Promise(r => setTimeout(r, 400));
-        }
-        // If still not recognized, close modal and reload to pick up new session (best user experience)
-        try { closeModal(); } catch(e){}
-        try { window.location.reload(); } catch(e){}
-      })();
-
+      closeModal();
+      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+      window.location.href = decodeURIComponent(rt || '/');
     } catch (err) {
       console.error('signin handler error', err);
       if (passwordError) passwordError.textContent = 'Unexpected error. See console.';
@@ -369,13 +306,16 @@ function setupAuthModal() {
     }
   });
 
+  // Sign up
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
       if (signupError) signupError.textContent = '';
+
       const email = (signupEmail?.value || '').trim();
       const name = (signupName?.value || '').trim();
       const pw = (signupPassword?.value || '').trim();
+
       if (!email || !name || !pw) { if (signupError) signupError.textContent = 'Fill name, email and password'; return; }
       if (pw.length < 6) { if (signupError) signupError.textContent = 'Password must be at least 6 characters'; return; }
       if (!signupAccept?.checked) { if (signupError) signupError.textContent = 'You must accept the Terms'; return; }
@@ -402,7 +342,8 @@ function setupAuthModal() {
   });
 
   if (confResend) confResend.addEventListener('click', async (e) => {
-    try { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } } catch (err) { console.error('resend error', err); }
+    try { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } }
+    catch (err) { console.error('resend error', err); }
   });
 
   if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
@@ -411,85 +352,193 @@ function setupAuthModal() {
 
 /* ----- header extras (cart + auth UI) ----- */
 export function renderHeaderExtras() {
-  try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) { console.warn('renderHeaderExtras cart count init failed', e); }
-  window.addEventListener('storage', () => { try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {} });
+  try {
+    window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
+  } catch (e) {
+    console.warn('renderHeaderExtras cart count init failed', e);
+  }
+
+  window.addEventListener('storage', () => {
+    try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {}
+  });
+
   try { setupAuthModal(); } catch (e) { console.warn('setupAuthModal error', e); }
 
   const toggle = document.getElementById('rs-header-login-toggle');
   const logoutBtn = document.getElementById('rs-logout-btn');
 
-  function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
+  function setUi(loggedIn) {
+    if (toggle) toggle.style.display = loggedIn ? 'none' : '';
+    if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none';
+  }
+
+  /* ---- safe getSession/getUser with timeout guard ---- */
+  async function safeGetSessionAndUser(timeoutMs = 12000) {
+    // return { session, user } or { session: null, user: null }
+    try {
+      // try getSession first with short timeout
+      const sessRes = await Promise.race([ supabase.auth.getSession(), new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), 5000)) ]).catch(e=>({ error: e }));
+      const session = sessRes?.data?.session || null;
+      let user = session?.user || null;
+
+      // if no user yet, call getUser with longer timeout
+      if (!user) {
+        const userRes = await Promise.race([ supabase.auth.getUser(), new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), timeoutMs)) ]).catch(e=>({ error: e }));
+        user = userRes?.data?.user || userRes?.user || null;
+      }
+
+      return { session, user };
+    } catch (e) {
+      console.warn('safeGetSessionAndUser failed', e);
+      return { session: null, user: null };
+    }
+  }
+
+  /* ------- Robust auth-state cart merge handler (prevents races) ------- */
+  // global lock to prevent concurrent merges
+  window.__RS_cart_merge_in_progress = window.__RS_cart_merge_in_progress || false;
+
+  try {
+    if (supabase.auth && supabase.auth.onAuthStateChange) {
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        // attempt to refresh UI/merge after auth-state changes
+        await refreshAuthUI().catch(e => console.warn('refreshAuthUI error from onAuthStateChange', e));
+      });
+    }
+  } catch (e) { /* ignore */ }
 
   async function refreshAuthUI() {
+    // 1) try fast SDK checks (non-blocking)
     try {
-      const u = await safeGetSessionAndUser();
-      const user = u?.user || null;
+      const { session, user } = await safeGetSessionAndUser(8000);
       setUi(!!user);
       if (user) return;
     } catch (e) {
-      console.warn('refreshAuthUI safe check failed', e);
+      console.warn('getSession fast check failed/timeout', e);
     }
 
-    // fallback: token check via fetch (already covered in safeGetSessionAndUser) - final fallback sets UI to logged out
-    setUi(false);
+    // 2) fallback explicit fetch using anon apikey + stored token (best-effort)
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      const raw = localStorage.getItem(storageKey);
+      let parsed;
+      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
+      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
+
+      if (!anonKey) { setUi(false); return; }
+
+      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
+      const headers = { 'apikey': anonKey };
+      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
+
+      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
+      if (resp && resp.status === 200) {
+        setUi(true);
+      } else {
+        setUi(false);
+      }
+    } catch (err) {
+      console.warn('fallback token check failed', err);
+      setUi(false);
+    }
   }
 
-  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch(e => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
+  // initial run
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
-  // inside renderHeaderExtras(), replace existing logoutBtn.addEventListener(...) with this block:
-if (logoutBtn) {
-  logoutBtn.addEventListener('click', async (e) => {
-    try { e && e.preventDefault(); } catch (_) {}
+  // --------- EXTRA: Merge-on-login handler that is robust and guarded ----------
+  // We attach a dedicated handler that runs *once* when user becomes available.
+  (function attachReliableMergeOnLogin() {
+    // Avoid multiple installs
+    if (window.__RS_merge_handler_attached) return;
+    window.__RS_merge_handler_attached = true;
 
-    // 1) get current user (best-effort)
-    let currentUser = null;
-    try {
-      const ures = await supabase.auth.getUser();
-      currentUser = ures?.data?.user || ures?.user || null;
-    } catch (err) {
-      console.warn('getUser on logout failed', err);
-    }
+    // function to perform merge (server base + local additive)
+    async function performMergeIfNeeded() {
+      if (window.__RS_cart_merge_in_progress) return;
+      window.__RS_cart_merge_in_progress = true;
 
-    // 2) if logged-in user exists, persist their current local cart to server
-    if (currentUser && currentUser.id) {
       try {
-        await window.RSCart.saveCartForUser(currentUser.id);
-      } catch (err) {
-        console.warn('Failed to save cart for user on logout', err);
+        // wait for SDK to have user (try short retries)
+        let user = null;
+        for (let i=0;i<8;i++) {
+          const res = await safeGetSessionAndUser(4000).catch(()=>({session:null,user:null}));
+          user = res.user || null;
+          if (user && user.id) break;
+          await new Promise(r=>setTimeout(r, 250));
+        }
+        if (!user || !user.id) {
+          // nothing to do
+          window.__RS_cart_merge_in_progress = false;
+          return;
+        }
+
+        // load server cart and local cart
+        const server = await window.RSCart.loadCartForUser(user.id).catch(()=>null) || {};
+        const local  = window.RSCart.readCart() || {};
+
+        // if server is empty and local empty -> nothing
+        // compute merged: server base, add local
+        const merged = window.RSCart.mergeCarts(server || {}, local || {});
+
+        // write merged to local and update UI immediately
+        try {
+          window.RSCart.writeCart(merged);
+          window.dispatchEvent(new Event('storage'));
+          window.RSCart.setCartCountUi(Object.values(merged).reduce((s,i)=>s+(i.qty||0),0));
+        } catch (e) { console.warn('merge: local write failed', e); }
+
+        // persist merged to server
+        try {
+          await window.RSCart.saveCartForUser(user.id);
+        } catch (e) { console.warn('merge: saveCartForUser failed', e); }
+
+      } catch (e) {
+        console.warn('performMergeIfNeeded failed', e);
+      } finally {
+        window.__RS_cart_merge_in_progress = false;
       }
     }
 
-    // 3) clear local cart so badge becomes zero for anonymous user
+    // Listen to auth state change events from SDK and call merge
     try {
-      window.RSCart.writeCart({});
-      // dispatch storage event to update other tabs
-      try { window.dispatchEvent(new Event('storage')); } catch(e) {}
-      window.RSCart.setCartCountUi(0);
-    } catch (err) {
-      console.warn('Failed to clear local cart on logout', err);
+      if (supabase && supabase.auth && supabase.auth.onAuthStateChange) {
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          // run after short delay to allow SDK to settle, but only once per change
+          setTimeout(() => { performMergeIfNeeded().catch(()=>{}); }, 250);
+        });
+      } else {
+        // Fallback: attempt merge periodically (once) on page load
+        setTimeout(() => { performMergeIfNeeded().catch(()=>{}); }, 500);
+      }
+    } catch (e) {
+      console.warn('attachReliableMergeOnLogin install failed', e);
+      // still attempt to run once
+      setTimeout(() => { performMergeIfNeeded().catch(()=>{}); }, 500);
     }
+  })();
 
-    // 4) sign out from Supabase and remove local auth storage key
-    try { await supabase.auth.signOut().catch(()=>{}); } catch (e) { console.warn('signOut failed', e); }
-    try {
-      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
-      localStorage.removeItem(storageKey);
-    } catch (e) { console.warn('removing auth storageKey failed', e); }
-
-    // 5) give user feedback and navigate away
-    try { alert('You have been logged out.'); } catch (e) {}
-    window.location.href = '/';
-  });
+  // Logout handler
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async (e) => {
+      try { e.preventDefault && e.preventDefault(); } catch (_) {}
+      try { await supabase.auth.signOut().catch(() => {}); } catch (e) {}
+      try {
+        const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+        localStorage.removeItem(storageKey);
+      } catch(e){}
+      try { alert('You have been logged out.'); } catch (e) {}
+      window.location.href = '/';
+    });
+  }
 }
-}
 
-/* auto-run on DOM ready */
+/* ----- auto-run on DOM ready ----- */
 document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
 
-// Expose for manual testing
+// expose open/close for manual testing
 window.openModal = openModal;
 window.closeModal = closeModal;
-window.safeGetSessionAndUser = safeGetSessionAndUser;
