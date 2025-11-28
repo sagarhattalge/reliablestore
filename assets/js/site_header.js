@@ -437,18 +437,51 @@ export function renderHeaderExtras() {
   try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch(e => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async (e) => {
-      try { e.preventDefault && e.preventDefault(); } catch (_) {}
+  // inside renderHeaderExtras(), replace existing logoutBtn.addEventListener(...) with this block:
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async (e) => {
+    try { e && e.preventDefault(); } catch (_) {}
+
+    // 1) get current user (best-effort)
+    let currentUser = null;
+    try {
+      const ures = await supabase.auth.getUser();
+      currentUser = ures?.data?.user || ures?.user || null;
+    } catch (err) {
+      console.warn('getUser on logout failed', err);
+    }
+
+    // 2) if logged-in user exists, persist their current local cart to server
+    if (currentUser && currentUser.id) {
       try {
-        const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
-        localStorage.removeItem(storageKey);
-      } catch (e){}
-      try { await supabase.auth.signOut().catch(()=>{}); } catch (e) {}
-      try { alert('You have been logged out.'); } catch (e) {}
-      window.location.href = '/';
-    });
-  }
+        await window.RSCart.saveCartForUser(currentUser.id);
+      } catch (err) {
+        console.warn('Failed to save cart for user on logout', err);
+      }
+    }
+
+    // 3) clear local cart so badge becomes zero for anonymous user
+    try {
+      window.RSCart.writeCart({});
+      // dispatch storage event to update other tabs
+      try { window.dispatchEvent(new Event('storage')); } catch(e) {}
+      window.RSCart.setCartCountUi(0);
+    } catch (err) {
+      console.warn('Failed to clear local cart on logout', err);
+    }
+
+    // 4) sign out from Supabase and remove local auth storage key
+    try { await supabase.auth.signOut().catch(()=>{}); } catch (e) { console.warn('signOut failed', e); }
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      localStorage.removeItem(storageKey);
+    } catch (e) { console.warn('removing auth storageKey failed', e); }
+
+    // 5) give user feedback and navigate away
+    try { alert('You have been logged out.'); } catch (e) {}
+    window.location.href = '/';
+  });
+}
 }
 
 /* auto-run on DOM ready */
