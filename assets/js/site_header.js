@@ -1,15 +1,12 @@
 // assets/js/site_header.js
-// Header + Auth modal + safe cart merge for ReliableStore
-// - Expects /assets/js/supabase_client.js to export `supabase`
-// - Implements idempotent merge (session-scoped) to avoid repeated merges
-
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (optional)
+// Edge function endpoint
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || (window.SUPABASE_ANON_KEY || '');
 
-window.__rs_block_auto_modal = true; // prevents accidental auto-open
+// guard to avoid auto-open
+window.__rs_block_auto_modal = true;
 
 /* small helpers */
 const $ = (sel) => document.querySelector(sel);
@@ -17,10 +14,9 @@ const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
-/* ===== window.RSCart (namespaced cart helpers) ===== */
+/* ====== RSCart namespaced helpers (unchanged behaviour) ====== */
 window.RSCart = window.RSCart || (function(){
   const ns = {};
-
   ns.readCart = (typeof window.readCart === 'function') ? window.readCart
                : (typeof window.getCart === 'function') ? window.getCart
                : (typeof window.getCartLocal === 'function') ? window.getCartLocal
@@ -51,56 +47,42 @@ window.RSCart = window.RSCart || (function(){
     if (el2) el2.innerText = String(n || 0);
   };
 
-  // Merge policy (user wants sum of quantities)
   ns.mergeCarts = function(serverCart, localCart) {
-    // both serverCart and localCart are objects keyed by product id
     const merged = Object.assign({}, serverCart || {});
     for (const k of Object.keys(localCart || {})) {
-      const localItem = localCart[k] || {};
-      if (!merged[k]) merged[k] = Object.assign({}, localItem);
-      else {
-        // sum quantities (ensure numeric)
-        const sQty = Number(merged[k].qty || 0);
-        const lQty = Number(localItem.qty || 0);
-        merged[k].qty = sQty + lQty;
-      }
+      if (!merged[k]) merged[k] = localCart[k];
+      else merged[k].qty = (merged[k].qty || 0) + (localCart[k].qty || 0);
     }
     return merged;
   };
 
-  // Persist cart to server (upsert row: user_id, items)
   ns.saveCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return;
     const items = ns.readCart();
     try {
       const { data, error } = await supabase.from('carts').upsert({ user_id: userId, items }).select();
-      if (error) {
-        console.warn('RSCart.saveCartForUser error', error);
-        return { error };
-      }
+      if (error) { console.warn('RSCart.saveCartForUser error', error); return { error }; }
       return { data };
-    } catch (err) {
-      console.warn('RSCart.saveCartForUser exception', err);
-      return { error: err };
-    }
+    } catch (err) { console.warn('RSCart.saveCartForUser exception', err); return { error: err }; }
   };
 
   ns.loadCartForUser = async function(userId) {
     if (!userId || typeof supabase === 'undefined') return null;
     try {
-      const { data, error } = await supabase.from('carts').select('items').eq('user_id', userId).maybeSingle();
+      const { data, error } = await supabase
+        .from('carts')
+        .select('items')
+        .eq('user_id', userId)
+        .maybeSingle();
       if (error) { console.warn('loadCartForUser supabase error', error); return null; }
       return data?.items || null;
-    } catch (err) {
-      console.warn('RSCart.loadCartForUser exception', err);
-      return null;
-    }
+    } catch (err) { console.warn('RSCart.loadCartForUser exception', err); return null; }
   };
 
   return ns;
 })();
 
-/* modal accessibility helpers */
+/* ----- modal accessibility helpers ----- */
 function _disablePageForModal() {
   const main = document.querySelector('main') || document.body;
   try { main.inert = true; } catch (e) { main.setAttribute('aria-hidden', 'true'); }
@@ -110,16 +92,13 @@ function _restorePageAfterModal() {
   try { main.inert = false; } catch (e) { main.removeAttribute('aria-hidden'); }
 }
 
-/* open/close modal (no outside-click close) */
+/* ----- open/close modal (Option B: no outside-click close) ----- */
 function openModal(opts = {}) {
   const force = !!opts.force;
   if (!force && window.__rs_block_auto_modal) return;
   const m = $('#rs-auth-modal'); if (!m) return;
-  m.style.display = 'flex';
-  m.style.alignItems = 'center';
-  m.style.justifyContent = 'center';
-  m.classList.remove('hidden');
-  m.removeAttribute('aria-hidden');
+  m.style.display = 'flex'; m.style.alignItems = 'center'; m.style.justifyContent = 'center';
+  m.classList.remove('hidden'); m.removeAttribute('aria-hidden');
   _disablePageForModal();
   setTimeout(() => {
     const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
@@ -128,22 +107,20 @@ function openModal(opts = {}) {
 }
 function closeModal() {
   const m = $('#rs-auth-modal'); if (!m) return;
-  m.classList.add('hidden');
-  m.setAttribute('aria-hidden', 'true');
-  m.style.display = 'none';
+  m.classList.add('hidden'); m.setAttribute('aria-hidden', 'true'); m.style.display = 'none';
   _restorePageAfterModal();
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
 
-/* step UI */
+/* ----- show one step helper ----- */
 function showStep(id) {
   $all('.rs-step').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; });
   const el = document.getElementById(id);
   if (el) { el.classList.remove('hidden'); el.style.display = 'block'; }
 }
 
-/* Supabase helpers */
+/* ----- Supabase helpers (simple wrappers) ----- */
 async function signInWithPassword(email, password) {
   try { return await supabase.auth.signInWithPassword({ email, password }); }
   catch (e) { return { error: e }; }
@@ -153,7 +130,7 @@ async function signUpWithEmail(email, password, metadata = {}) {
   catch (e) { return { error: e }; }
 }
 
-/* Edge function checkExistingByEmail */
+/* ----- Edge function check ----- */
 async function checkExistingByEmail(identifier) {
   try {
     if (!CHECK_IDENTIFIER_ENDPOINT) { console.warn('CHECK_IDENTIFIER_ENDPOINT not configured'); return null; }
@@ -169,7 +146,79 @@ async function checkExistingByEmail(identifier) {
 }
 window.checkExistingByEmail = checkExistingByEmail;
 
-/* ----- modal wiring ----- */
+/* ----- Robust session/user detection ----- */
+
+async function timeoutPromise(p, ms, errMsg = 'timeout') {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(errMsg)), ms))]);
+}
+
+// Try SDK getSession/getUser with timeouts, then seed SDK from storage if token present, then manual fetch
+async function safeGetSessionAndUser() {
+  try {
+    // 1) try getSession quickly
+    try {
+      const sessRes = await timeoutPromise(supabase.auth.getSession(), 8000, 'getSession timeout');
+      const session = sessRes?.data?.session || null;
+      if (session && session.user) return { session, user: session.user };
+    } catch (e) {
+      // continue to try getUser next
+      console.warn('getSession fast check failed/timeout', e && (e.message || e));
+    }
+
+    // 2) try getUser (slightly longer)
+    try {
+      const userRes = await timeoutPromise(supabase.auth.getUser(), 12000, 'getUser timeout');
+      const user = userRes?.data?.user || userRes?.user || null;
+      if (user) return { session: null, user };
+    } catch (e) {
+      console.warn('supabase.getUser failed/timeout', e && (e.message || e));
+    }
+
+    // 3) try seeding SDK from localStorage token (if present)
+    try {
+      if (typeof window.seedSdkFromStorage === 'function') {
+        const seed = await window.seedSdkFromStorage().catch(e => ({ ok:false, err:e }));
+        if (seed && seed.ok) {
+          // after seeding, try getUser again
+          try {
+            const userRes2 = await timeoutPromise(supabase.auth.getUser(), 8000, 'getUser-after-seed timeout');
+            const user2 = userRes2?.data?.user || userRes2?.user || null;
+            if (user2) return { session: null, user: user2 };
+          } catch (e2) { /* continue */ }
+        }
+      }
+    } catch (e) { console.warn('seedSdkFromStorage failed', e); }
+
+    // 4) final fallback: manual fetch to auth endpoint using anon key + stored token
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      const raw = localStorage.getItem(storageKey);
+      let parsed;
+      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
+      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
+      if (!anonKey) return { session: null, user: null };
+
+      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
+      const headers = { 'apikey': anonKey };
+      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
+      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers }).catch(() => null);
+      if (resp && resp.status === 200) {
+        const json = await resp.json().catch(()=>null);
+        if (json && json.id) return { session: null, user: json };
+      }
+    } catch (e) {
+      console.warn('fallback manual fetch failed', e);
+    }
+
+    return { session: null, user: null };
+  } catch (err) {
+    console.warn('safeGetSessionAndUser unexpected error', err);
+    return { session:null, user:null };
+  }
+}
+
+/* ----- wiring modal / events (kept same behaviour) ----- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
@@ -182,7 +231,6 @@ function setupAuthModal() {
   modal.style.alignItems = modal.style.alignItems || 'center';
   modal.style.justifyContent = modal.style.justifyContent || 'center';
 
-  // elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext  = document.getElementById('rs-identifier-next');
   const identifierError = document.getElementById('rs-identifier-error');
@@ -207,20 +255,25 @@ function setupAuthModal() {
 
   const closeBtns = $all('[data-rs-close]').filter(el => !el.classList.contains('rs-modal-backdrop'));
 
-  // open
-  toggle.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; openModal({ force: true }); showStep('rs-step-enter'); if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); } if (identifierError) identifierError.textContent = ''; });
+  toggle.addEventListener('click', (e) => {
+    try { e.preventDefault(); } catch (_) {}
+    openModal({ force: true });
+    showStep('rs-step-enter');
+    if (identifierInput) { identifierInput.value = ''; identifierInput.focus(); }
+    if (identifierError) identifierError.textContent = '';
+  });
 
-  // close via explicit close buttons
   closeBtns.forEach(b => b.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  if (signupAccept && signupBtn) signupAccept.addEventListener('change', () => {
-    if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; }
-    else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
-  });
+  if (signupAccept && signupBtn) {
+    signupAccept.addEventListener('change', () => {
+      if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; }
+      else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
+    });
+  }
 
-  // identifier next (phone/email check)
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -228,7 +281,6 @@ function setupAuthModal() {
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
@@ -239,7 +291,6 @@ function setupAuthModal() {
         else { if (signupEmail) signupEmail.value = ''; if (signupName) signupName.value = ''; if (signupPassword) signupPassword.value = ''; showStep('rs-step-signup'); signupEmail && signupEmail.focus(); return; }
       }
 
-      // email branch
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
@@ -266,7 +317,6 @@ function setupAuthModal() {
     }
   });
 
-  /* ---------- SIGN IN: carefully seed SDK + run single merge ---------- */
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -276,54 +326,41 @@ function setupAuthModal() {
       if (!email || !pw) { if (passwordError) passwordError.textContent = 'Enter your password'; return; }
 
       signinBtn.disabled = true;
-
-      // 1) call sign-in
       const res = await signInWithPassword(email, pw);
-
+      signinBtn.disabled = false;
       if (res.error) {
-        signinBtn.disabled = false;
         if (passwordError) passwordError.textContent = res.error.message || 'Sign in failed';
         return;
       }
 
-      // 2) If sign-in gave a session, seed the SDK so getUser/getSession work immediately
+      // set session if returned (best-effort)
       try {
-        const sess = res.data?.session || null;
-        if (sess && sess.access_token) {
+        if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
-            access_token: sess.access_token,
-            refresh_token: sess.refresh_token
-          }).catch(err => {
-            console.warn('setSession after sign-in failed (non-fatal):', err);
-          });
+            access_token: res.data.session.access_token,
+            refresh_token: res.data.session.refresh_token
+          }).catch(e => console.warn('setSession after sign-in failed', e));
         }
-      } catch (e) { console.warn('seeding session after sign-in threw', e); }
+      } catch (e) { console.warn('setSession after sign-in failed', e); }
 
-      // 3) prevent duplicate immediate auth handler run
-      window.__RS_ignore_next_auth_event = true;
-      setTimeout(() => { window.__RS_ignore_next_auth_event = false; }, 1000);
-
-      // 4) wait briefly for SDK to stabilise and get user
-      let userObj = null;
-      for (let i=0;i<10;i++) {
-        const ures = await supabase.auth.getUser().catch(()=>({ error: true }));
-        userObj = ures?.data?.user || ures?.user || null;
-        if (userObj && userObj.id) break;
-        await new Promise(r=>setTimeout(r, 150));
-      }
-
-      // 5) perform cart merge once for this session (guarded)
-      try {
-        if (userObj && userObj.id) {
-          await performCartMergeOnce(userObj.id);
+      // small delay + check & close modal when SDK recognizes user
+      (async function waitAndClose() {
+        for (let i = 0; i < 8; i++) {
+          try {
+            const u = await safeGetSessionAndUser();
+            if (u && u.user) {
+              closeModal();
+              const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+              window.location.href = decodeURIComponent(rt || '/');
+              return;
+            }
+          } catch(e){}
+          await new Promise(r => setTimeout(r, 400));
         }
-      } catch(e) { console.warn('performCartMergeOnce failed', e); }
-
-      // 6) close modal and go to returnTo
-      try { closeModal(); } catch(e){ console.warn('closeModal fail', e); }
-
-      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-      window.location.href = decodeURIComponent(rt || '/');
+        // If still not recognized, close modal and reload to pick up new session (best user experience)
+        try { closeModal(); } catch(e){}
+        try { window.location.reload(); } catch(e){}
+      })();
 
     } catch (err) {
       console.error('signin handler error', err);
@@ -332,7 +369,6 @@ function setupAuthModal() {
     }
   });
 
-  /* ---------- SIGN UP ---------- */
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -365,194 +401,87 @@ function setupAuthModal() {
     }
   });
 
-  if (confResend) confResend.addEventListener('click', async (e) => { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } });
+  if (confResend) confResend.addEventListener('click', async (e) => {
+    try { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } } catch (err) { console.error('resend error', err); }
+  });
 
   if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
   if (cancelSignup) cancelSignup.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 }
 
-/* ---------- header extras (cart + auth UI) ---------- */
+/* ----- header extras (cart + auth UI) ----- */
 export function renderHeaderExtras() {
   try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) { console.warn('renderHeaderExtras cart count init failed', e); }
   window.addEventListener('storage', () => { try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {} });
-
   try { setupAuthModal(); } catch (e) { console.warn('setupAuthModal error', e); }
 
   const toggle = document.getElementById('rs-header-login-toggle');
   const logoutBtn = document.getElementById('rs-logout-btn');
 
-  function setUi(loggedIn) {
-    if (toggle) toggle.style.display = loggedIn ? 'none' : '';
-    if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none';
-  }
-
-  /* safe session+user getter with timeouts (non-throwing) */
-  async function safeGetSessionAndUser() {
-    // Try SDK getSession then getUser with guarded timeout
-    try {
-      const sessRes = await Promise.race([ supabase.auth.getSession(), new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), 8000)) ]);
-      const session = sessRes?.data?.session || null;
-      const user = session?.user || null;
-      if (user) return { session, user };
-    } catch (e) {}
-    try {
-      const userRes = await Promise.race([ supabase.auth.getUser(), new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), 12000)) ]);
-      const user = userRes?.data?.user || userRes?.user || null;
-      return { session: null, user };
-    } catch (e) {}
-    return { session: null, user: null };
-  }
+  function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
 
   async function refreshAuthUI() {
     try {
-      const { user } = await safeGetSessionAndUser();
+      const u = await safeGetSessionAndUser();
+      const user = u?.user || null;
       setUi(!!user);
-      // If logged in, ensure cart merge happens once (sessionStorage guard)
-      if (user && user.id) {
-        try { await performCartMergeOnce(user.id); } catch (e) { console.warn('performCartMergeOnce failed in refreshAuthUI', e); }
-      }
-      return;
+      if (user) return;
     } catch (e) {
-      console.warn('refreshAuthUI unexpected error', e);
-      setUi(false);
+      console.warn('refreshAuthUI safe check failed', e);
     }
+
+    // fallback: token check via fetch (already covered in safeGetSessionAndUser) - final fallback sets UI to logged out
+    setUi(false);
   }
 
-  /* onAuthStateChange: ignore immediate one if flagged */
-  try {
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (window.__RS_ignore_next_auth_event) {
-        window.__RS_ignore_next_auth_event = false;
-        return;
-      }
-      // Debounce / guard multiple quick events
-      if (window.__RS_auth_event_debounce) return;
-      window.__RS_auth_event_debounce = true;
-      setTimeout(() => { window.__RS_auth_event_debounce = false; }, 700);
-
-      const user = session?.user || (await supabase.auth.getUser()).data?.user || null;
-      try {
-        // run one-time cart merge when user signs in
-        if (user && user.id) {
-          await performCartMergeOnce(user.id);
-        }
-      } catch (e) { console.warn('onAuthStateChange merge failed', e); }
-
-      // update UI
-      try { await refreshAuthUI(); } catch (e) { console.warn('refreshAuthUI on auth event failed', e); }
-    });
-  } catch (e) { /* ignore older SDK */ }
-
-  // initial run
+  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch(e => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
   refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async (e) => {
-      try { e && e.preventDefault(); } catch (_) {}
-      // persist local cart to server if user exists (best-effort)
-      let currentUser = null;
-      try {
-        const ures = await supabase.auth.getUser();
-        currentUser = ures?.data?.user || ures?.user || null;
-      } catch (e) { /* ignore */ }
+  // inside renderHeaderExtras(), replace existing logoutBtn.addEventListener(...) with this block:
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async (e) => {
+    try { e && e.preventDefault(); } catch (_) {}
 
-      if (currentUser && currentUser.id) {
-        try { await window.RSCart.saveCartForUser(currentUser.id); } catch (e) { console.warn(e); }
-      } else {
-        try { window.RSCart.writeCart({}); window.dispatchEvent(new Event('storage')); } catch (e) {}
-      }
-
-      try { await supabase.auth.signOut(); } catch (e) {}
-      // cleanup merge flag for safety
-      try { sessionStorage.removeItem('rs_cart_merged_' + (currentUser?.id || '')); } catch(e){}
-      try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){}
-      window.location.href = '/';
-    });
-  }
-}
-
-/* ---------- performCartMergeOnce(userId) ----------
-   Ensures merge runs at most once per page session for a given user.
-   Uses sessionStorage key 'rs_cart_merged_<userId>' to remember.
-*/
-async function performCartMergeOnce(userId) {
-  if (!userId) return;
-  const key = 'rs_cart_merged_' + userId;
-  try {
-    if (sessionStorage.getItem(key)) {
-      // already merged this session, ensure UI uses merged cart
-      const server = await window.RSCart.loadCartForUser(userId);
-      if (server) {
-        window.RSCart.writeCart(server);
-        window.dispatchEvent(new Event('storage'));
-        window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-      }
-      return;
-    }
-
-    // set guard now to avoid races
-    sessionStorage.setItem(key, 'in-progress');
-
-    // read server and local
-    const [server, local] = await Promise.all([
-      window.RSCart.loadCartForUser(userId).catch(e => { console.warn('loadCartForUser failed', e); return null; }),
-      (async () => window.RSCart.readCart())()
-    ]);
-
-    // if both empty => nothing to do
-    const serverEmpty = !server || Object.keys(server).length === 0;
-    const localEmpty = !local || Object.keys(local).length === 0;
-
-    if (serverEmpty && localEmpty) {
-      sessionStorage.setItem(key, 'done');
-      return;
-    }
-
-    // Build merged result: sum quantities
-    const merged = window.RSCart.mergeCarts(server || {}, local || {});
-
-    // Safety: If merged equals server (no change), just write server to local to sync UI
-    const serverJson = JSON.stringify(server || {});
-    const mergedJson = JSON.stringify(merged || {});
-    if (serverJson === mergedJson) {
-      // nothing changed; copy server to local
-      window.RSCart.writeCart(server || {});
-      window.dispatchEvent(new Event('storage'));
-      window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-      sessionStorage.setItem(key, 'done');
-      return;
-    }
-
-    // Save merged to server (upsert)
+    // 1) get current user (best-effort)
+    let currentUser = null;
     try {
-      const { data, error } = await supabase.from('carts').upsert({ user_id: userId, items: merged }).select();
-      if (error) {
-        console.warn('performCartMergeOnce: upsert error', error);
-        // still write merged locally so UI sees expected result
-        window.RSCart.writeCart(merged);
-        window.dispatchEvent(new Event('storage'));
-        window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-        sessionStorage.setItem(key, 'done-with-error');
-        return;
-      }
-      // success: write server's stored items back to local (data[0]?.items)
-      const savedItems = (data && data[0] && data[0].items) ? data[0].items : merged;
-      window.RSCart.writeCart(savedItems);
-      window.dispatchEvent(new Event('storage'));
-      window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-      sessionStorage.setItem(key, 'done');
+      const ures = await supabase.auth.getUser();
+      currentUser = ures?.data?.user || ures?.user || null;
     } catch (err) {
-      console.warn('performCartMergeOnce: exception saving merged cart', err);
-      // fallback: write merged local copy so UI consistent
-      window.RSCart.writeCart(merged);
-      window.dispatchEvent(new Event('storage'));
-      window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-      sessionStorage.setItem(key, 'done-with-exception');
+      console.warn('getUser on logout failed', err);
     }
-  } catch (e) {
-    console.warn('performCartMergeOnce generic error', e);
-    try { sessionStorage.setItem(key, 'failed'); } catch(_) {}
-  }
+
+    // 2) if logged-in user exists, persist their current local cart to server
+    if (currentUser && currentUser.id) {
+      try {
+        await window.RSCart.saveCartForUser(currentUser.id);
+      } catch (err) {
+        console.warn('Failed to save cart for user on logout', err);
+      }
+    }
+
+    // 3) clear local cart so badge becomes zero for anonymous user
+    try {
+      window.RSCart.writeCart({});
+      // dispatch storage event to update other tabs
+      try { window.dispatchEvent(new Event('storage')); } catch(e) {}
+      window.RSCart.setCartCountUi(0);
+    } catch (err) {
+      console.warn('Failed to clear local cart on logout', err);
+    }
+
+    // 4) sign out from Supabase and remove local auth storage key
+    try { await supabase.auth.signOut().catch(()=>{}); } catch (e) { console.warn('signOut failed', e); }
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      localStorage.removeItem(storageKey);
+    } catch (e) { console.warn('removing auth storageKey failed', e); }
+
+    // 5) give user feedback and navigate away
+    try { alert('You have been logged out.'); } catch (e) {}
+    window.location.href = '/';
+  });
+}
 }
 
 /* auto-run on DOM ready */
@@ -560,17 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
 
-// Expose some helpers to the console for debugging
-window.performCartMergeNow = async function() {
-  try {
-    const ures = await supabase.auth.getUser().catch(()=>({ error:true }));
-    const user = ures?.data?.user || ures?.user || null;
-    if (!user || !user.id) throw new Error('no signed-in user');
-    await performCartMergeOnce(user.id);
-    return { ok: true };
-  } catch (e) { return { ok: false, error: String(e) }; }
-};
-
+// Expose for manual testing
 window.openModal = openModal;
 window.closeModal = closeModal;
-
+window.safeGetSessionAndUser = safeGetSessionAndUser;
