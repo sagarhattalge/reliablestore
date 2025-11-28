@@ -1,34 +1,22 @@
 // assets/js/site_header.js
-// Header + Auth modal client script for ReliableStore
-// Uses Supabase client imported from /assets/js/supabase_client.js
-
 import { supabase } from '/assets/js/supabase_client.js';
 
-// Edge function endpoint (deployed) — uses supabase URL as base if available
+// Edge function endpoint
 const CHECK_IDENTIFIER_ENDPOINT = (supabase?.supabaseUrl || 'https://gugcnntetqarewwnzrki.supabase.co').replace(/\/$/, '') + '/functions/v1/check-identifier';
+const SUPABASE_ANON_KEY = supabase?.supabaseKey || (window.SUPABASE_ANON_KEY || '');
 
-// Read anon from client if present (safe to be public)
-const SUPABASE_ANON_KEY = supabase?.supabaseKey || '';
+// guard to avoid auto-open
+window.__rs_block_auto_modal = true;
 
-/* ----------------- Debug toggle ----------------- */
-// default: false; set `window.RS_DEBUG = true` from console to enable verbose diagnostics
-window.RS_DEBUG = !!window.RS_DEBUG;
-function rsDebugLog(...args) { if (window.RS_DEBUG) console.log(...args); }
-function rsDebugWarn(...args) { if (window.RS_DEBUG) console.warn(...args); }
-function rsDebugError(...args) { if (window.RS_DEBUG) console.error(...args); }
-
-/* ----- small helpers ----- */
+/* small helpers */
 const $ = (sel) => document.querySelector(sel);
 const $all = (sel) => Array.from(document.querySelectorAll(sel));
 const getReturnTo = () => window.location.pathname + window.location.search + window.location.hash;
 const returnToEncoded = () => encodeURIComponent(getReturnTo() || '/');
 
-window.__rs_block_auto_modal = true; // prevent accidental auto-open
-
-/* ======= namespaced cart helpers (window.RSCart) — reuses existing page functions if present ======= */
+/* ====== RSCart namespaced helpers (unchanged behaviour) ====== */
 window.RSCart = window.RSCart || (function(){
   const ns = {};
-
   ns.readCart = (typeof window.readCart === 'function') ? window.readCart
                : (typeof window.getCart === 'function') ? window.getCart
                : (typeof window.getCartLocal === 'function') ? window.getCartLocal
@@ -48,11 +36,8 @@ window.RSCart = window.RSCart || (function(){
 
   ns.cartTotalCount = function() {
     const c = ns.readCart();
-    try {
-      return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0);
-    } catch (e) {
-      return 0;
-    }
+    try { return Object.values(c).reduce((s, i) => s + (i.qty || 0), 0); }
+    catch (e) { return 0; }
   };
 
   ns.setCartCountUi = function(n){
@@ -78,10 +63,7 @@ window.RSCart = window.RSCart || (function(){
       const { data, error } = await supabase.from('carts').upsert({ user_id: userId, items }).select();
       if (error) { console.warn('RSCart.saveCartForUser error', error); return { error }; }
       return { data };
-    } catch (err) {
-      console.warn('RSCart.saveCartForUser exception', err);
-      return { error: err };
-    }
+    } catch (err) { console.warn('RSCart.saveCartForUser exception', err); return { error: err }; }
   };
 
   ns.loadCartForUser = async function(userId) {
@@ -91,13 +73,10 @@ window.RSCart = window.RSCart || (function(){
         .from('carts')
         .select('items')
         .eq('user_id', userId)
-        .maybeSingle();   // safe when row missing
+        .maybeSingle();
       if (error) { console.warn('loadCartForUser supabase error', error); return null; }
       return data?.items || null;
-    } catch (err) {
-      console.warn('RSCart.loadCartForUser exception', err);
-      return null;
-    }
+    } catch (err) { console.warn('RSCart.loadCartForUser exception', err); return null; }
   };
 
   return ns;
@@ -116,200 +95,135 @@ function _restorePageAfterModal() {
 /* ----- open/close modal (Option B: no outside-click close) ----- */
 function openModal(opts = {}) {
   const force = !!opts.force;
-  if (!force && window.__rs_block_auto_modal) {
-    console.debug('openModal blocked by guard');
-    return;
-  }
-  const m = $('#rs-auth-modal');
-  if (!m) return;
-
-  m.style.display = 'flex';
-  m.style.alignItems = 'center';
-  m.style.justifyContent = 'center';
-
-  m.classList.remove('hidden');
-  m.removeAttribute('aria-hidden');
-
+  if (!force && window.__rs_block_auto_modal) return;
+  const m = $('#rs-auth-modal'); if (!m) return;
+  m.style.display = 'flex'; m.style.alignItems = 'center'; m.style.justifyContent = 'center';
+  m.classList.remove('hidden'); m.removeAttribute('aria-hidden');
   _disablePageForModal();
-
   setTimeout(() => {
     const input = m.querySelector('input, button, [tabindex]:not([tabindex="-1"])');
     if (input) try { input.focus(); } catch (e) {}
   }, 80);
 }
 function closeModal() {
-  const m = $('#rs-auth-modal');
-  if (!m) return;
-  m.classList.add('hidden');
-  m.setAttribute('aria-hidden', 'true');
-  m.style.display = 'none';
+  const m = $('#rs-auth-modal'); if (!m) return;
+  m.classList.add('hidden'); m.setAttribute('aria-hidden', 'true'); m.style.display = 'none';
   _restorePageAfterModal();
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   if (toggle) try { toggle.focus(); } catch (e) {}
 }
 
-/* ----- showStep helper ----- */
+/* ----- show one step helper ----- */
 function showStep(id) {
-  $all('.rs-step').forEach(s => {
-    s.classList.add('hidden');
-    s.style.display = 'none';
-  });
+  $all('.rs-step').forEach(s => { s.classList.add('hidden'); s.style.display = 'none'; });
   const el = document.getElementById(id);
-  if (el) {
-    el.classList.remove('hidden');
-    el.style.display = 'block';
-  }
+  if (el) { el.classList.remove('hidden'); el.style.display = 'block'; }
 }
 
-/* ----- Supabase helpers ----- */
+/* ----- Supabase helpers (simple wrappers) ----- */
 async function signInWithPassword(email, password) {
-  try {
-    return await supabase.auth.signInWithPassword({ email, password });
-  } catch (e) {
-    return { error: e };
-  }
+  try { return await supabase.auth.signInWithPassword({ email, password }); }
+  catch (e) { return { error: e }; }
 }
 async function signUpWithEmail(email, password, metadata = {}) {
-  try {
-    return await supabase.auth.signUp({ email, password, options: { data: metadata }});
-  } catch (e) {
-    return { error: e };
-  }
+  try { return await supabase.auth.signUp({ email, password, options: { data: metadata }}); }
+  catch (e) { return { error: e }; }
 }
 
-/* ----- Secure existence check (Edge Function) ----- */
+/* ----- Edge function check ----- */
 async function checkExistingByEmail(identifier) {
   try {
-    if (!CHECK_IDENTIFIER_ENDPOINT) {
-      console.warn('CHECK_IDENTIFIER_ENDPOINT not configured');
-      return null;
-    }
-
+    if (!CHECK_IDENTIFIER_ENDPOINT) { console.warn('CHECK_IDENTIFIER_ENDPOINT not configured'); return null; }
     const payload = { identifier: String(identifier || '') };
-
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    if (SUPABASE_ANON_KEY) {
-      headers['apikey'] = SUPABASE_ANON_KEY;
-      headers['Authorization'] = 'Bearer ' + SUPABASE_ANON_KEY;
-    }
-
-    const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, {
-      method: 'POST',
-      mode: 'cors',
-      cache: 'no-store',
-      credentials: 'omit',
-      headers,
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '<no body>');
-      console.warn('check-identifier endpoint non-OK', res.status, body);
-      return null;
-    }
-
+    const headers = { 'Content-Type': 'application/json' };
+    if (SUPABASE_ANON_KEY) { headers['apikey'] = SUPABASE_ANON_KEY; headers['Authorization'] = 'Bearer ' + SUPABASE_ANON_KEY; }
+    const res = await fetch(CHECK_IDENTIFIER_ENDPOINT, { method: 'POST', mode: 'cors', cache: 'no-store', credentials: 'omit', headers, body: JSON.stringify(payload) });
+    if (!res.ok) { const body = await res.text().catch(() => '<no body>'); console.warn('check-identifier endpoint non-OK', res.status, body); return null; }
     const json = await res.json().catch(() => null);
-    if (!json || typeof json.exists !== 'boolean') {
-      console.warn('check-identifier: unexpected response', json);
-      return null;
-    }
-    return json; // { exists: boolean, email?: string }
-  } catch (err) {
-    console.warn('checkExistingByEmail exception', err);
-    return null;
-  }
+    if (!json || typeof json.exists !== 'boolean') { console.warn('check-identifier: unexpected response', json); return null; }
+    return json;
+  } catch (err) { console.warn('checkExistingByEmail exception', err); return null; }
 }
-window.checkExistingByEmail = checkExistingByEmail; // for quick console testing
+window.checkExistingByEmail = checkExistingByEmail;
 
-/* ----------------- safeGetSessionAndUser -----------------
-   Tries SDK calls first (getSession/getUser) with timeouts, then a manual fetch fallback.
-   Intentionally treats "no session" (401/AuthSessionMissing) as normal and keeps console quiet
-   unless window.RS_DEBUG is true.
-*/
-async function safeGetSessionAndUser(timeoutMs = 10000) {
-  // SDK: getSession (fast path)
+/* ----- Robust session/user detection ----- */
+
+async function timeoutPromise(p, ms, errMsg = 'timeout') {
+  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(errMsg)), ms))]);
+}
+
+// Try SDK getSession/getUser with timeouts, then seed SDK from storage if token present, then manual fetch
+async function safeGetSessionAndUser() {
   try {
-    const sessionRes = await Promise.race([
-      supabase.auth.getSession(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('getSession timeout')), timeoutMs))
-    ]).catch(e => ({ error: e }));
-
-    const session = sessionRes?.data?.session || null;
-    if (session && session.user) {
-      return { session, user: session.user };
-    }
-  } catch (e) {
-    rsDebugWarn('getSession fast check failed/timeout', e);
-  }
-
-  // SDK: getUser (slightly longer)
-  try {
-    const userRes = await Promise.race([
-      supabase.auth.getUser(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('getUser timeout')), timeoutMs))
-    ]);
-    const user = userRes?.data?.user || userRes?.user || null;
-    if (user) return { session: null, user };
-  } catch (e) {
-    const msg = (e && e.message) || String(e || '');
-    if (msg.toLowerCase().includes('authsessionmissing') || msg.toLowerCase().includes('missing')) {
-      // expected: no active session
-      rsDebugLog('safeGetSessionAndUser: no active session (expected).');
-    } else {
-      rsDebugWarn('supabase.getUser/getSession failed/timeout', e);
-    }
-  }
-
-  // Fallback manual fetch to /auth/v1/user using anon key + stored access token
-  try {
-    const storageKey = supabase.storageKey
-      || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
-
-    const raw = localStorage.getItem(storageKey);
-    let parsed = null;
-    try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
-    const access_token = parsed?.access_token || parsed?.currentSession?.access_token || null;
-
-    const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
-    if (!anonKey) { rsDebugLog('safeGetSessionAndUser: no anon key available'); return { session: null, user: null }; }
-
-    const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-    const headers = { 'apikey': anonKey };
-    if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
-
-    const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers }).catch(e => ({ error: e }));
-    if (!resp || !resp.status) {
-      rsDebugWarn('safeGetSessionAndUser: manual fetch failed', resp);
-      return { session: null, user: null };
+    // 1) try getSession quickly
+    try {
+      const sessRes = await timeoutPromise(supabase.auth.getSession(), 8000, 'getSession timeout');
+      const session = sessRes?.data?.session || null;
+      if (session && session.user) return { session, user: session.user };
+    } catch (e) {
+      // continue to try getUser next
+      console.warn('getSession fast check failed/timeout', e && (e.message || e));
     }
 
-    if (resp.status === 200) {
-      const json = await resp.json().catch(() => null);
-      if (json) return { session: null, user: json };
-    } else if (resp.status === 401 || resp.status === 403) {
-      // expected — silently ignore (unless debug on)
-      rsDebugLog(`safeGetSessionAndUser: manual auth check returned ${resp.status} (no session)`);
-      return { session: null, user: null };
-    } else {
-      const text = await resp.text().catch(()=>'<no body>');
-      rsDebugWarn('safeGetSessionAndUser: manual auth check unexpected status', resp.status, text);
-      return { session: null, user: null };
+    // 2) try getUser (slightly longer)
+    try {
+      const userRes = await timeoutPromise(supabase.auth.getUser(), 12000, 'getUser timeout');
+      const user = userRes?.data?.user || userRes?.user || null;
+      if (user) return { session: null, user };
+    } catch (e) {
+      console.warn('supabase.getUser failed/timeout', e && (e.message || e));
     }
-  } catch (err) {
-    rsDebugWarn('fallback token check failed', err);
+
+    // 3) try seeding SDK from localStorage token (if present)
+    try {
+      if (typeof window.seedSdkFromStorage === 'function') {
+        const seed = await window.seedSdkFromStorage().catch(e => ({ ok:false, err:e }));
+        if (seed && seed.ok) {
+          // after seeding, try getUser again
+          try {
+            const userRes2 = await timeoutPromise(supabase.auth.getUser(), 8000, 'getUser-after-seed timeout');
+            const user2 = userRes2?.data?.user || userRes2?.user || null;
+            if (user2) return { session: null, user: user2 };
+          } catch (e2) { /* continue */ }
+        }
+      }
+    } catch (e) { console.warn('seedSdkFromStorage failed', e); }
+
+    // 4) final fallback: manual fetch to auth endpoint using anon key + stored token
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      const raw = localStorage.getItem(storageKey);
+      let parsed;
+      try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
+      const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
+      const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
+      if (!anonKey) return { session: null, user: null };
+
+      const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
+      const headers = { 'apikey': anonKey };
+      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
+      const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers }).catch(() => null);
+      if (resp && resp.status === 200) {
+        const json = await resp.json().catch(()=>null);
+        if (json && json.id) return { session: null, user: json };
+      }
+    } catch (e) {
+      console.warn('fallback manual fetch failed', e);
+    }
+
     return { session: null, user: null };
+  } catch (err) {
+    console.warn('safeGetSessionAndUser unexpected error', err);
+    return { session:null, user:null };
   }
 }
 
-/* ----- wiring modal / events ----- */
+/* ----- wiring modal / events (kept same behaviour) ----- */
 function setupAuthModal() {
   const toggle = document.getElementById('rs-header-login-toggle') || document.getElementById('btn_login');
   const modal = document.getElementById('rs-auth-modal');
   if (!toggle || !modal) return;
 
-  // defensive visual defaults
   modal.style.position = modal.style.position || 'fixed';
   modal.style.inset = modal.style.inset || '0';
   modal.style.display = modal.style.display || 'none';
@@ -317,7 +231,6 @@ function setupAuthModal() {
   modal.style.alignItems = modal.style.alignItems || 'center';
   modal.style.justifyContent = modal.style.justifyContent || 'center';
 
-  // elements
   const identifierInput = document.getElementById('rs-identifier');
   const identifierNext  = document.getElementById('rs-identifier-next');
   const identifierError = document.getElementById('rs-identifier-error');
@@ -342,7 +255,6 @@ function setupAuthModal() {
 
   const closeBtns = $all('[data-rs-close]').filter(el => !el.classList.contains('rs-modal-backdrop'));
 
-  // open
   toggle.addEventListener('click', (e) => {
     try { e.preventDefault(); } catch (_) {}
     openModal({ force: true });
@@ -351,33 +263,17 @@ function setupAuthModal() {
     if (identifierError) identifierError.textContent = '';
   });
 
-  // close via explicit close buttons (not backdrop)
-  closeBtns.forEach(b => b.addEventListener('click', (e) => {
-    try { e.preventDefault(); } catch (_) {}
-    closeModal();
-  }));
-
-  // ESC to close
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-  });
-
+  closeBtns.forEach(b => b.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
   if (backToEnter) backToEnter.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; showStep('rs-step-enter'); });
 
-  // enable/disable signup button based on checkbox
   if (signupAccept && signupBtn) {
     signupAccept.addEventListener('change', () => {
-      if (signupAccept.checked) {
-        signupBtn.disabled = false;
-        signupBtn.style.opacity = '1';
-      } else {
-        signupBtn.disabled = true;
-        signupBtn.style.opacity = '0.7';
-      }
+      if (signupAccept.checked) { signupBtn.disabled = false; signupBtn.style.opacity = '1'; }
+      else { signupBtn.disabled = true; signupBtn.style.opacity = '0.7'; }
     });
   }
 
-  // Identifier -> check existence via Edge Function
   if (identifierNext) identifierNext.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -385,31 +281,16 @@ function setupAuthModal() {
       const raw = (identifierInput?.value || '').trim();
       if (!raw) { if (identifierError) identifierError.textContent = 'Please enter your email or mobile number'; return; }
 
-      // phone branch
       if (/^\d{10,}$/.test(raw)) {
         identifierNext.disabled = true;
         const res = await checkExistingByEmail(raw);
         identifierNext.disabled = false;
         if (!res) { if (identifierError) identifierError.textContent = 'Unable to check right now'; return; }
-        if (res.exists && res.email) {
-          if (knownEmailText) knownEmailText.textContent = res.email;
-          if (passwordInput) passwordInput.value = '';
-          showStep('rs-step-password');
-          return;
-        } else if (res.exists) {
-          showStep('rs-step-password');
-          return;
-        } else {
-          if (signupEmail) signupEmail.value = '';
-          if (signupName) signupName.value = '';
-          if (signupPassword) signupPassword.value = '';
-          showStep('rs-step-signup');
-          signupEmail && signupEmail.focus();
-          return;
-        }
+        if (res.exists && res.email) { if (knownEmailText) knownEmailText.textContent = res.email; if (passwordInput) passwordInput.value = ''; showStep('rs-step-password'); return; }
+        else if (res.exists) { showStep('rs-step-password'); return; }
+        else { if (signupEmail) signupEmail.value = ''; if (signupName) signupName.value = ''; if (signupPassword) signupPassword.value = ''; showStep('rs-step-signup'); signupEmail && signupEmail.focus(); return; }
       }
 
-      // email branch
       const email = raw;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (identifierError) identifierError.textContent = 'Please enter a valid email address'; return; }
 
@@ -436,7 +317,6 @@ function setupAuthModal() {
     }
   });
 
-  // Sign in
   if (signinBtn) signinBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
@@ -453,19 +333,35 @@ function setupAuthModal() {
         return;
       }
 
-      // set session if returned (optional)
+      // set session if returned (best-effort)
       try {
         if (!res.error && res.data?.session) {
           await supabase.auth.setSession({
             access_token: res.data.session.access_token,
             refresh_token: res.data.session.refresh_token
-          });
+          }).catch(e => console.warn('setSession after sign-in failed', e));
         }
       } catch (e) { console.warn('setSession after sign-in failed', e); }
 
-      closeModal();
-      const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
-      window.location.href = decodeURIComponent(rt || '/');
+      // small delay + check & close modal when SDK recognizes user
+      (async function waitAndClose() {
+        for (let i = 0; i < 8; i++) {
+          try {
+            const u = await safeGetSessionAndUser();
+            if (u && u.user) {
+              closeModal();
+              const rt = new URLSearchParams(window.location.search).get('returnTo') || returnToEncoded();
+              window.location.href = decodeURIComponent(rt || '/');
+              return;
+            }
+          } catch(e){}
+          await new Promise(r => setTimeout(r, 400));
+        }
+        // If still not recognized, close modal and reload to pick up new session (best user experience)
+        try { closeModal(); } catch(e){}
+        try { window.location.reload(); } catch(e){}
+      })();
+
     } catch (err) {
       console.error('signin handler error', err);
       if (passwordError) passwordError.textContent = 'Unexpected error. See console.';
@@ -473,16 +369,13 @@ function setupAuthModal() {
     }
   });
 
-  // Sign up
   if (signupBtn) signupBtn.addEventListener('click', async (e) => {
     try {
       try { e.preventDefault(); } catch (_) {}
       if (signupError) signupError.textContent = '';
-
       const email = (signupEmail?.value || '').trim();
       const name = (signupName?.value || '').trim();
       const pw = (signupPassword?.value || '').trim();
-
       if (!email || !name || !pw) { if (signupError) signupError.textContent = 'Fill name, email and password'; return; }
       if (pw.length < 6) { if (signupError) signupError.textContent = 'Password must be at least 6 characters'; return; }
       if (!signupAccept?.checked) { if (signupError) signupError.textContent = 'You must accept the Terms'; return; }
@@ -496,7 +389,6 @@ function setupAuthModal() {
         return;
       }
 
-      // Success: show confirmation step (do not auto-close)
       const emailSentTo = email;
       if (confText) confText.textContent = `A confirmation link has been sent to ${emailSentTo}. Please follow it to complete your account.`;
       showStep('rs-step-confirmation');
@@ -509,18 +401,8 @@ function setupAuthModal() {
     }
   });
 
-  // Resend confirmation (informational placeholder)
   if (confResend) confResend.addEventListener('click', async (e) => {
-    try {
-      try { e.preventDefault(); } catch (_) {}
-      if (confText) {
-        const prev = confText.textContent;
-        confText.textContent = 'A new confirmation email request has been triggered (if supported).';
-        setTimeout(() => { confText.textContent = prev; }, 4000);
-      }
-    } catch (err) {
-      console.error('resend error', err);
-    }
+    try { try { e.preventDefault(); } catch(_){}; if (confText) { const prev = confText.textContent; confText.textContent = 'A new confirmation email request has been triggered (if supported).'; setTimeout(() => { confText.textContent = prev; }, 4000); } } catch (err) { console.error('resend error', err); }
   });
 
   if (confClose) confClose.addEventListener('click', (e) => { try { e.preventDefault(); } catch(_){}; closeModal(); });
@@ -529,135 +411,85 @@ function setupAuthModal() {
 
 /* ----- header extras (cart + auth UI) ----- */
 export function renderHeaderExtras() {
-  // cart badge init
-  try {
-    window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-  } catch (e) {
-    console.warn('renderHeaderExtras cart count init failed', e);
-  }
-
-  window.addEventListener('storage', () => {
-    try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {}
-  });
-
-  // modal wiring
+  try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) { console.warn('renderHeaderExtras cart count init failed', e); }
+  window.addEventListener('storage', () => { try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch (e) {} });
   try { setupAuthModal(); } catch (e) { console.warn('setupAuthModal error', e); }
 
   const toggle = document.getElementById('rs-header-login-toggle');
   const logoutBtn = document.getElementById('rs-logout-btn');
 
-  function setUi(loggedIn) {
-    if (toggle) toggle.style.display = loggedIn ? 'none' : '';
-    if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none';
-  }
+  function setUi(loggedIn) { if (toggle) toggle.style.display = loggedIn ? 'none' : ''; if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none'; }
 
-  // refresh / evaluate auth UI
   async function refreshAuthUI() {
     try {
-      const { session, user } = await safeGetSessionAndUser(12000);
+      const u = await safeGetSessionAndUser();
+      const user = u?.user || null;
       setUi(!!user);
       if (user) return;
     } catch (e) {
-      rsDebugWarn('refreshAuthUI error', e);
+      console.warn('refreshAuthUI safe check failed', e);
     }
 
-    // If no user, set logged-out UI
+    // fallback: token check via fetch (already covered in safeGetSessionAndUser) - final fallback sets UI to logged out
     setUi(false);
   }
 
-  // listen to auth state changes (keeps UI in sync)
-  try {
-    supabase.auth.onAuthStateChange(() => {
-      refreshAuthUI().catch((e) => rsDebugWarn('refreshAuthUI error', e));
-    });
-  } catch (e) { /* ignore if not supported */ }
+  try { supabase.auth.onAuthStateChange(() => { refreshAuthUI().catch(e => console.warn('refreshAuthUI error', e)); }); } catch (e) { /* ignore */ }
+  refreshAuthUI().catch((e) => console.warn('initial refreshAuthUI error', e));
 
-  // initial evaluation
-  refreshAuthUI().catch((e) => rsDebugWarn('initial refreshAuthUI error', e));
+  // inside renderHeaderExtras(), replace existing logoutBtn.addEventListener(...) with this block:
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async (e) => {
+    try { e && e.preventDefault(); } catch (_) {}
 
-  // logout handler — persist cart to server when possible, clear session storage keys, navigate away.
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async (e) => {
-      try { e.preventDefault && e.preventDefault(); } catch (_) {}
+    // 1) get current user (best-effort)
+    let currentUser = null;
+    try {
+      const ures = await supabase.auth.getUser();
+      currentUser = ures?.data?.user || ures?.user || null;
+    } catch (err) {
+      console.warn('getUser on logout failed', err);
+    }
+
+    // 2) if logged-in user exists, persist their current local cart to server
+    if (currentUser && currentUser.id) {
       try {
-        // persist cart for signed-in user before signing out
-        let currentUser = null;
-        try {
-          const ures = await supabase.auth.getUser();
-          currentUser = ures?.data?.user || ures?.user || null;
-        } catch (e) {}
-
-        if (currentUser && currentUser.id) {
-          try { await window.RSCart.saveCartForUser(currentUser.id); } catch (e) { console.warn(e); }
-        } else {
-          try { window.RSCart.writeCart({}); window.dispatchEvent(new Event('storage')); } catch (e) {}
-        }
-
-        // sign out via SDK
-        try { await supabase.auth.signOut(); } catch (e) { /* ignore */ }
-
-        // remove locally stored token key used by SDK (defensive)
-        try {
-          const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
-          localStorage.removeItem(storageKey);
-        } catch (e) {}
-
-        try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){}
-
-        try { alert('You have been logged out.'); } catch (e) {}
-
-        window.location.href = '/';
+        await window.RSCart.saveCartForUser(currentUser.id);
       } catch (err) {
-        console.warn('logout handler failed', err);
-        window.location.href = '/';
+        console.warn('Failed to save cart for user on logout', err);
       }
-    });
-  }
+    }
+
+    // 3) clear local cart so badge becomes zero for anonymous user
+    try {
+      window.RSCart.writeCart({});
+      // dispatch storage event to update other tabs
+      try { window.dispatchEvent(new Event('storage')); } catch(e) {}
+      window.RSCart.setCartCountUi(0);
+    } catch (err) {
+      console.warn('Failed to clear local cart on logout', err);
+    }
+
+    // 4) sign out from Supabase and remove local auth storage key
+    try { await supabase.auth.signOut().catch(()=>{}); } catch (e) { console.warn('signOut failed', e); }
+    try {
+      const storageKey = supabase.storageKey || ('sb-' + (supabase.supabaseUrl || '').replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      localStorage.removeItem(storageKey);
+    } catch (e) { console.warn('removing auth storageKey failed', e); }
+
+    // 5) give user feedback and navigate away
+    try { alert('You have been logged out.'); } catch (e) {}
+    window.location.href = '/';
+  });
+}
 }
 
-/* ----- auto-run on DOM ready ----- */
+/* auto-run on DOM ready */
 document.addEventListener('DOMContentLoaded', () => {
   try { renderHeaderExtras(); } catch (e) { console.warn('renderHeaderExtras error', e); }
 });
 
-// expose open/close for manual testing
+// Expose for manual testing
 window.openModal = openModal;
 window.closeModal = closeModal;
-
-/* --------- auth-cart sync wiring (runs after file load) --------- */
-(async function attachCartAuthSync() {
-  try {
-    window.addEventListener('storage', () => {
-      try { window.RSCart.setCartCountUi(window.RSCart.cartTotalCount()); } catch(e){}
-    });
-
-    try {
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        const user = session?.user || (await supabase.auth.getUser()).data?.user || null;
-        if (user && user.id) {
-          try {
-            const server = await window.RSCart.loadCartForUser(user.id);
-            const local = window.RSCart.readCart();
-            if (server) {
-              const merged = window.RSCart.mergeCarts(server, local);
-              try { window.RSCart.writeCart(merged); } catch (e) { console.warn(e); }
-              window.dispatchEvent(new Event('storage'));
-              window.RSCart.setCartCountUi(window.RSCart.cartTotalCount());
-            } else if (Object.keys(local).length) {
-              // persist local cart to server (first-time save)
-              await window.RSCart.saveCartForUser(user.id);
-            }
-          } catch (e) { console.warn('auth-state cart merge failed', e); }
-        }
-      });
-    } catch (e) { /* some older supabase builds may not expose onAuthStateChange; ignore */ }
-
-    // hook logout persistence for any other logout button (defensive)
-    const logoutBtn = document.getElementById('rs-logout-btn');
-    if (logoutBtn) {
-      // already wired inside renderHeaderExtras; nothing more needed here
-    }
-  } catch (err) {
-    console.warn('attachCartAuthSync failed', err);
-  }
-})();
+window.safeGetSessionAndUser = safeGetSessionAndUser;
