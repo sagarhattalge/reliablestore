@@ -490,7 +490,7 @@ export function renderHeaderExtras() {
     if (logoutBtn) logoutBtn.style.display = loggedIn ? '' : 'none';
   }
 
-  // Helper to call SDK getSession/getUser with timeouts and graceful fallback
+    // Helper to call SDK getSession/getUser with timeouts and graceful fallback
   async function safeGetSessionAndUser() {
     // 1) try getSession quickly
     try {
@@ -517,7 +517,7 @@ export function renderHeaderExtras() {
       console.warn('supabase.getUser/getSession failed/timeout', e);
     }
 
-    // 3) fallback: manual fetch to auth/v1/user using anon key + stored token
+    // 3) fallback: only attempt manual fetch to auth/v1/user if we actually have an access_token stored.
     try {
       const storageKey = supabase.storageKey || ('rs_supabase_auth_token_v1');
       const raw = localStorage.getItem(storageKey);
@@ -525,12 +525,18 @@ export function renderHeaderExtras() {
       try { parsed = raw ? JSON.parse(raw) : null; } catch (e) { parsed = null; }
       const access_token = parsed?.access_token || parsed?.currentSession?.access_token || parsed?.value?.access_token || null;
 
+      // If there's no access token, do NOT call auth/v1/user (avoids 401 noise).
+      if (!access_token) {
+        return { session: null, user: null };
+      }
+
       const anonKey = (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) || supabase?.supabaseKey || '';
-      if (!anonKey) return { session: null, user: null };
+      if (!anonKey) {
+        return { session: null, user: null };
+      }
 
       const url = (supabase.supabaseUrl || '').replace(/\/$/, '') + '/auth/v1/user';
-      const headers = { 'apikey': anonKey };
-      if (access_token) headers['Authorization'] = 'Bearer ' + access_token;
+      const headers = { 'apikey': anonKey, 'Authorization': 'Bearer ' + access_token };
 
       const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store', headers });
       if (resp && resp.status === 200) {
