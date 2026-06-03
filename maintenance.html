@@ -1,0 +1,312 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reliable Store - Maintenance</title>
+
+<link rel="icon" href="/assets/icons/favicon.png">
+
+<style>
+:root{
+    --primary:#FE9900;
+    --bg:#0f1115;
+    --card:#171b22;
+    --text:#ffffff;
+    --muted:#b8b8b8;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;
+    min-height:100vh;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.particles{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    z-index:0;
+}
+
+.particles span{
+    position:absolute;
+    width:4px;
+    height:4px;
+    background:rgba(254,153,0,.6);
+    border-radius:50%;
+    animation:float 15s linear infinite;
+}
+
+@keyframes float{
+    from{
+        transform:translateY(100vh);
+        opacity:0;
+    }
+    20%{
+        opacity:1;
+    }
+    80%{
+        opacity:1;
+    }
+    to{
+        transform:translateY(-100px);
+        opacity:0;
+    }
+}
+
+.container{
+    width:90%;
+    max-width:900px;
+    position:relative;
+    z-index:10;
+}
+
+.card{
+    background:rgba(23,27,34,.92);
+    backdrop-filter:blur(12px);
+    border:1px solid rgba(254,153,0,.25);
+    border-radius:24px;
+    padding:40px;
+    text-align:center;
+    box-shadow:0 0 40px rgba(254,153,0,.15);
+}
+
+.logo{
+    max-width:300px;
+    width:100%;
+    margin-bottom:25px;
+}
+
+.gear{
+    font-size:70px;
+    display:inline-block;
+    animation:spin 8s linear infinite;
+    margin-bottom:20px;
+}
+
+@keyframes spin{
+    from{transform:rotate(0deg);}
+    to{transform:rotate(360deg);}
+}
+
+h1{
+    font-size:2.4rem;
+    margin-bottom:15px;
+}
+
+.highlight{
+    color:var(--primary);
+}
+
+.desc{
+    color:var(--muted);
+    line-height:1.8;
+    max-width:700px;
+    margin:auto;
+}
+
+.status-box{
+    margin-top:30px;
+}
+
+.status-title{
+    margin-bottom:10px;
+    color:var(--primary);
+}
+
+.progress{
+    height:12px;
+    background:#252b35;
+    border-radius:20px;
+    overflow:hidden;
+}
+
+.progress-bar{
+    width:68%;
+    height:100%;
+    background:linear-gradient(90deg,#FE9900,#ffb63b);
+    animation:pulse 2s ease infinite;
+}
+
+@keyframes pulse{
+    0%{opacity:.7;}
+    50%{opacity:1;}
+    100%{opacity:.7;}
+}
+
+.status{
+    margin-top:15px;
+    font-weight:600;
+    color:#ffd089;
+}
+
+.clock{
+    margin-top:25px;
+    font-size:1.2rem;
+    color:#fff;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:15px;
+    margin-top:30px;
+}
+
+.item{
+    background:#202631;
+    padding:15px;
+    border-radius:12px;
+}
+
+.item span{
+    color:#7dff96;
+}
+
+.contact{
+    margin-top:35px;
+    color:#d7d7d7;
+}
+
+.contact a{
+    color:var(--primary);
+    text-decoration:none;
+}
+
+.footer{
+    margin-top:30px;
+    color:#888;
+    font-size:.9rem;
+}
+
+@media(max-width:768px){
+    h1{
+        font-size:1.8rem;
+    }
+
+    .card{
+        padding:25px;
+    }
+
+    .gear{
+        font-size:55px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="particles" id="particles"></div>
+
+<div class="container">
+<div class="card">
+
+<img src="/assets/icons/header-logo.png" class="logo" alt="Reliable Store">
+
+<div class="gear">⚙️</div>
+
+<h1>
+Reliable Store is <span class="highlight">Being Upgraded</span>
+</h1>
+
+<p class="desc">
+Reliable Store is currently being upgraded with new features, improved performance, and enhanced security.
+Our team is actively working behind the scenes to deliver a faster, safer, and better shopping experience.
+We’ll be back shortly.
+</p>
+
+<div class="status-box">
+<div class="status-title">Current Upgrade Progress</div>
+
+<div class="progress">
+<div class="progress-bar"></div>
+</div>
+
+<div class="status" id="statusText">
+Optimizing Store Performance...
+</div>
+</div>
+
+<div class="clock" id="clock"></div>
+
+<div class="grid">
+<div class="item"><span>✓</span> Website Active</div>
+<div class="item"><span>✓</span> Customer Data Safe</div>
+<div class="item"><span>✓</span> Security Enhancements</div>
+<div class="item"><span>✓</span> Upgrade In Progress</div>
+</div>
+
+<div class="contact">
+Support: <a href="mailto:support@reliablestore.in">support@reliablestore.in</a>
+<br><br>
+WhatsApp Updates:
+<a href="https://wa.me/918856085258" target="_blank">
++91 88560 85258
+</a>
+</div>
+
+<div class="footer">
+Thank you for your patience and continued support.
+</div>
+
+</div>
+</div>
+
+<script>
+const statuses = [
+"Optimizing Store Performance...",
+"Upgrading Security Features...",
+"Improving User Experience...",
+"Performing Final Checks...",
+"Preparing Enhanced Shopping Experience..."
+];
+
+let i = 0;
+
+setInterval(()=>{
+    i=(i+1)%statuses.length;
+    document.getElementById('statusText').textContent=statuses[i];
+},3000);
+
+function updateClock(){
+    const now=new Date();
+
+    document.getElementById("clock").innerHTML=
+    "Current Server Time<br>" +
+    now.toLocaleString("en-IN",{
+        dateStyle:"medium",
+        timeStyle:"medium"
+    });
+}
+
+updateClock();
+setInterval(updateClock,1000);
+
+const particles=document.getElementById('particles');
+
+for(let i=0;i<35;i++){
+    const s=document.createElement('span');
+    s.style.left=Math.random()*100+'%';
+    s.style.animationDuration=(10+Math.random()*15)+'s';
+    s.style.animationDelay=Math.random()*10+'s';
+    particles.appendChild(s);
+}
+</script>
+
+</body>
+</html>
+```
